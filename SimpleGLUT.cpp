@@ -3,9 +3,12 @@
 // standard
 #include <assert.h>
 #include <math.h>
+#include <iostream>
 
 // glut
 #include <GL/glut.h>
+#include <vector>
+#include <glm/glm.hpp>
 
 //================================
 // global variables
@@ -17,36 +20,48 @@ int g_screenHeight = 0;
 // frame index
 int g_frameIndex = 0;
 
-// quaternion
-GLdouble wq = 0.0;
-GLdouble xq = 0.0;
-GLdouble yq = 0.0;
-GLdouble zq = 0.0;
+
+GLdouble catmullRom(GLdouble p0, GLdouble p1, GLdouble p2, GLdouble p3, GLdouble t) {
+	GLdouble t2 = t * t;
+	GLdouble t3 = t2 * t;
+	return ((2 * p1) +
+		(-p0 + p2) * t +
+		(2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+		(-p0 + 3 * p1 - 3 * p2 + p3) * t3) * 0.5;
+}
+
+void eulerOperations(GLint interpolationMode) {
+		
+	
+}
+void quaternionOperations(GLint interpolationMode) {
+	std::vector<GLdouble[6]> controlPoints;
+
+}
 
 //================================
 // init
 //================================
 void init( void ) {
 	// init something before main loop...
-	GLint mode = 1;
-	printf("Select rotation mode: 1 for Euler angle, 2 for Quaternion..\n");
-	scanf_s("%d", &mode);
-	if (mode == 1) {
+	GLint orientationMode = 1;
+	std::cout << "Select rotation mode: 1 for Euler angle, 2 for Quaternion.." << "\n";
+	std::cin >> orientationMode;
+	GLint interpolationMode = 1;
+	std::cout << "Select interpolation mode: 1 for Catmull-Rom, 2 for B-Spline.." << "\n";
+	std::cin >> interpolationMode;
 
+	if (orientationMode == 1) {
+		eulerOperations(interpolationMode);
 	}
-	else if (mode == 2) {
-
+	else if (orientationMode == 1) {
+		quaternionOperations(interpolationMode);
 	}
 	else {
+		
 		exit(1);
 	}
 
-	printf("Enter Position:\n");
-	printf("Enter Quaternion:\n");
-	if (scanf_s("%lf %lf %lf %lf", &wq, &xq, &yq, &zq) != 4) {
-		exit(1);
-	}
-	printf("w:%lf x:%lf y:%lf z:%lf\n", wq, xq, yq, zq);
 }
 
 //================================
@@ -55,11 +70,11 @@ void init( void ) {
 void update( void ) {
 	// do something before rendering...
 
-	// rotation angle
-	wq =  wq + 5;
-	if (wq >= 360) {
-		wq -= 360;
-	}
+	//// rotation angle
+	//wq =  wq + 5;
+	//if (wq >= 360) {
+	//	wq -= 360;
+	//}
 }
 
 //================================
@@ -107,7 +122,7 @@ void render( void ) {
 	glMatrixMode( GL_MODELVIEW );
 	glLoadIdentity();
 	glTranslatef (0.0, 0.0, -10.0);
-	glRotated(wq, xq, yq, zq);
+	glRotated(0, 0, 0, 0);
 
 	// render objects
 	glutSolidTeapot(1.0);
