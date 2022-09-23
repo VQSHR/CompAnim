@@ -35,7 +35,8 @@ void eulerOperations(GLint interpolationMode) {
 	
 }
 void quaternionOperations(GLint interpolationMode) {
-	std::vector<GLdouble[6]> controlPoints;
+	std::vector<GLdouble[3]> controlPointsPos;
+	std::vector<GLdouble[4]> controlPointsOri;
 
 }
 
