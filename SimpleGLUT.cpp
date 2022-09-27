@@ -7,8 +7,11 @@
 
 // glut
 #include <GL/glut.h>
+
+//glm
 #include <vector>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 //================================
 // global variables
@@ -20,8 +23,20 @@ int g_screenHeight = 0;
 // frame index
 int g_frameIndex = 0;
 
+// position variables
+GLfloat x = 0.0;
+GLfloat y = 0.0;
+GLfloat z = -10.0;
+// orientation variables
 
-GLdouble catmullRom(GLdouble p0, GLdouble p1, GLdouble p2, GLdouble p3, GLdouble t) {
+
+
+
+GLfloat catmullRom(glm::vec4 controlPoints, GLfloat t) {
+	GLfloat p0 = controlPoints[0];
+	GLfloat p1 = controlPoints[1]; 
+	GLfloat p2 = controlPoints[2]; 
+	GLfloat p3 = controlPoints[3];
 	GLdouble t2 = t * t;
 	GLdouble t3 = t2 * t;
 	return ((2 * p1) +
@@ -31,12 +46,28 @@ GLdouble catmullRom(GLdouble p0, GLdouble p1, GLdouble p2, GLdouble p3, GLdouble
 }
 
 void eulerOperations(GLint interpolationMode) {
+	GLfloat positionArray[12] = {-10,0,0,-5,-5,0,5,5,0,10,0,0}; // should be column-wise
+	glm::mat3x4 controlPointsPos = glm::make_mat3x4(positionArray);
+	GLfloat eularOriArray[12] = {-90,0,0,-45,-45,0,45,45,0,90,0,0};
+	glm::mat3x4 controlPointsOri = glm::make_mat3x4(eularOriArray);
+	GLfloat xi, yi, zi;
+	GLfloat rolli, yawi, pitchi;
+	std::vector<glm::mat4> transformMatrices;
+	for (int i = 0; i < 1; i += 0.1) {
+		xi = catmullRom(controlPointsPos[0], i);
+		yi = catmullRom(controlPointsPos[1], i);
+		zi = catmullRom(controlPointsPos[2], i);
+		rolli = catmullRom(controlPointsOri[0], i);
+		yawi = catmullRom(controlPointsOri[1], i);
+		pitchi = catmullRom(controlPointsOri[2], i);
+		glm::mat4 transformMatrix(1.0f); // identity matrix 
 		
+	}
 	
 }
 void quaternionOperations(GLint interpolationMode) {
-	std::vector<GLdouble[3]> controlPointsPos;
-	std::vector<GLdouble[4]> controlPointsOri;
+	std::vector<glm::vec3> controlPointsPos;
+	std::vector<glm::vec4> controlPointsOri;
 
 }
 
@@ -59,7 +90,6 @@ void init( void ) {
 		quaternionOperations(interpolationMode);
 	}
 	else {
-		
 		exit(1);
 	}
 
@@ -71,11 +101,9 @@ void init( void ) {
 void update( void ) {
 	// do something before rendering...
 
-	//// rotation angle
-	//wq =  wq + 5;
-	//if (wq >= 360) {
-	//	wq -= 360;
-	//}
+	// set position
+	
+	// set orientation
 }
 
 //================================
@@ -124,6 +152,7 @@ void render( void ) {
 	glLoadIdentity();
 	glTranslatef (0.0, 0.0, -10.0);
 	glRotated(0, 0, 0, 0);
+	
 
 	// render objects
 	glutSolidTeapot(1.0);
