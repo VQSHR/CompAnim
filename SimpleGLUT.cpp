@@ -12,6 +12,8 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp> 
+#include <glm/gtx/quaternion.hpp>
 
 //================================
 // global variables
@@ -29,14 +31,9 @@ GLfloat y = 0.0;
 GLfloat z = -10.0;
 // orientation variables
 
+std::vector<glm::mat4> transformMatrices;
 
-
-
-GLfloat catmullRom(glm::vec4 controlPoints, GLfloat t) {
-	GLfloat p0 = controlPoints[0];
-	GLfloat p1 = controlPoints[1]; 
-	GLfloat p2 = controlPoints[2]; 
-	GLfloat p3 = controlPoints[3];
+GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
 	GLdouble t2 = t * t;
 	GLdouble t3 = t2 * t;
 	return ((2 * p1) +
@@ -45,48 +42,51 @@ GLfloat catmullRom(glm::vec4 controlPoints, GLfloat t) {
 		(-p0 + 3 * p1 - 3 * p2 + p3) * t3) * 0.5;
 }
 
-std::vector<glm::mat4> eulerOperations(GLint interpolationMode) {
-	GLfloat positionArray[12] = {-10,0,0,-5,-5,0,5,5,0,10,0,0}; // column-wise
+void eulerOperations(GLint interpolationMode) {
+	GLfloat positionArray[12] = {-10,0,-10,-5,-5,-10,5,5,-10,10,0,-10}; // column-wise
 	glm::mat3x4 controlPointsPos = glm::make_mat3x4(positionArray);
-	GLfloat eularOriArray[12] = {-90,0,0,-45,-45,0,45,45,0,90,0,0};
-	glm::mat3x4 controlPointsOri = glm::make_mat3x4(eularOriArray);
+	GLfloat eulerOriArray[12] = {-90,0,0,-45,-45,0,45,45,0,90,0,0};
+	glm::mat3x4 controlPointsOri = glm::make_mat3x4(eulerOriArray);
 
 	GLfloat xi, yi, zi;
 	GLfloat rolli, yawi, pitchi;
 
-	std::vector<glm::mat4> transformMatrices;
-
-	for (int i = 0; i < 1; i += 0.1) {
+	for (float i = 0; i < 1; i += 0.1) {
 
 		// compute catmull-rom interpolation for position
-		xi = catmullRom(controlPointsPos[0], i);
-		yi = catmullRom(controlPointsPos[1], i);
-		zi = catmullRom(controlPointsPos[2], i);
+		xi = catmullRom(controlPointsPos[0][0], controlPointsPos[0][1], controlPointsPos[0][2], controlPointsPos[0][3], i);
+		yi = catmullRom(controlPointsPos[1][0], controlPointsPos[1][1], controlPointsPos[1][2], controlPointsPos[1][3], i);
+		zi = catmullRom(controlPointsPos[2][0], controlPointsPos[2][1], controlPointsPos[2][2], controlPointsPos[2][3], i);
 		glm::vec3 posTransform(xi, yi, zi);
 
 		// compute calmull-rom interpolation for orientation
-		rolli = catmullRom(controlPointsOri[0], i);
-		yawi = catmullRom(controlPointsOri[1], i);
-		pitchi = catmullRom(controlPointsOri[2], i);
+		rolli = catmullRom(controlPointsOri[0][0], controlPointsOri[0][1], controlPointsOri[0][2], controlPointsOri[0][3], i);
+		yawi = catmullRom(controlPointsOri[1][0], controlPointsOri[1][1], controlPointsOri[1][2], controlPointsOri[1][3], i);
+		pitchi = catmullRom(controlPointsOri[2][0], controlPointsOri[2][1], controlPointsOri[2][2], controlPointsOri[2][3], i);
 
 		// compute 4x4 transformation matrix 
 		glm::mat4 transformMatrix(1.0f); // identity matrix 
 		transformMatrix = glm::translate(transformMatrix, posTransform);
-		transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(0, 0, 1));
 		transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
+		transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(0, 0, 1));
 		transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
 		
 		// push result into vector for return
 		transformMatrices.push_back(transformMatrix);
 		
 	}
-	return transformMatrices;
 }
 void quaternionOperations(GLint interpolationMode) {
 	GLfloat positionArray[12] = { -10,0,0,-5,-5,0,5,5,0,10,0,0 }; // column-wise
 	glm::mat3x4 controlPointsPos = glm::make_mat3x4(positionArray);
-	GLfloat quatOriArray[16] = { -90,0,0,-45,-45,0,45,45,0,90,0,0 };
-	glm::mat3x4 controlPointsOri = glm::make_mat4x4(quatOriArray);
+	GLfloat eulerOriArray[12] = { -90,0,0,-45,-45,0,45,45,0,90,0,0 };
+	glm::mat3x4 controlPointsOri = glm::make_mat3x4(eulerOriArray);
+
+	// convert euler to quaternion
+
+	for (int k = 0; k < 4; k++) {
+		
+	}
 
 	// intermediate variables
 	GLfloat xi, yi, zi;
@@ -94,32 +94,32 @@ void quaternionOperations(GLint interpolationMode) {
 
 	std::vector<glm::mat4> transformMatrices;
 
-	for (int i = 0; i < 1; i += 0.1) {
+	//for (int i = 0; i < 1; i += 0.1) {
 
-		// compute catmull-rom interpolation for position
-		xi = catmullRom(controlPointsPos[0], i);
-		yi = catmullRom(controlPointsPos[1], i);
-		zi = catmullRom(controlPointsPos[2], i);
-		glm::vec3 posTransform(xi, yi, zi);
+	//	// compute catmull-rom interpolation for position
+	//	xi = catmullRom(controlPointsPos[0], i);
+	//	yi = catmullRom(controlPointsPos[1], i);
+	//	zi = catmullRom(controlPointsPos[2], i);
+	//	glm::vec3 posTransform(xi, yi, zi);
 
-		// compute calmull-rom interpolation for orientation
-		wq = catmullRom(controlPointsOri[0], i);
-		xq = catmullRom(controlPointsOri[1], i);
-		yq = catmullRom(controlPointsOri[2], i);
-		zq = catmullRom(controlPointsOri[3], i);
+	//	// compute calmull-rom interpolation for orientation
+	//	wq = catmullRom(controlPointsOri[0], i);
+	//	xq = catmullRom(controlPointsOri[1], i);
+	//	yq = catmullRom(controlPointsOri[2], i);
+	//	zq = catmullRom(controlPointsOri[3], i);
 
-		// compute 4x4 transformation matrix 
-		glm::mat4 transformMatrix(1.0f); // identity matrix 
-		transformMatrix = glm::translate(transformMatrix, posTransform);
-		transformMatrix = glm::rotate(transformMatrix, glm::radians(zq), glm::vec3(0, 0, 1));
-		transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
-		transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
+	//	// compute 4x4 transformation matrix 
+	//	glm::mat4 transformMatrix(1.0f); // identity matrix 
+	//	transformMatrix = glm::translate(transformMatrix, posTransform);
+	//	transformMatrix = glm::rotate(transformMatrix, glm::radians(zq), glm::vec3(0, 0, 1));
+	//	transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
+	//	transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
 
-		// push result into vector for return
-		transformMatrices.push_back(transformMatrix);
+	//	// push result into vector for return
+	//	transformMatrices.push_back(transformMatrix);
 
-	}
-	return transformMatrices;
+	//}
+	//return transformMatrices;
 
 }
 
@@ -138,7 +138,7 @@ void init( void ) {
 	if (orientationMode == 1) {
 		eulerOperations(interpolationMode);
 	}
-	else if (orientationMode == 1) {
+	else if (orientationMode == 2) {
 		quaternionOperations(interpolationMode);
 	}
 	else {
@@ -201,9 +201,15 @@ void render( void ) {
 
 	// modelview matrix
 	glMatrixMode( GL_MODELVIEW );
-	glLoadIdentity();
-	glTranslatef (0.0, 0.0, -10.0);
-	glRotated(0, 0, 0, 0);
+	glm::mat4 transformMatrix;
+	if (g_frameIndex < transformMatrices.size()) {
+		transformMatrix = transformMatrices[g_frameIndex];
+	}
+	else {
+		transformMatrix = transformMatrices[transformMatrices.size()-1];
+	}
+	
+	glLoadMatrixf(glm::value_ptr(transformMatrix));
 	
 
 	// render objects
