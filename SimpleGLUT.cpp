@@ -138,42 +138,71 @@ void quaternionOperations(GLint interpolationMode) {
 	glm::mat4x3 controlPointsOri = glm::make_mat4x3(eulerOriArray);
 
 	// convert euler to quaternion
+	std::vector<glm::quat> quaternions;
 	for (int k = 0; k < 4; k++) {
-		
+		glm::vec3 eulerAngles = glm::radians(controlPointsOri[k]);
+		glm::quat q = glm::quat(eulerAngles);
+		quaternions.push_back(q);
 	}
 
 	// intermediate variables
 	GLfloat xi, yi, zi;
 	GLfloat wq, xq, yq, zq;
+	
 
-	std::vector<glm::mat4> transformMatrices;
+	if (interpolationMode == 1) {
+		for (float i = 0; i < 1; i += 0.01) {
 
-	//for (int i = 0; i < 1; i += 0.1) {
+			// compute catmull-rom interpolation for position
+			xi = bSpline(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i);
+			yi = bSpline(controlPointsPos[0][1], controlPointsPos[1][1], controlPointsPos[2][1], controlPointsPos[3][1], i);
+			zi = bSpline(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i);
+			glm::vec3 posTransform(xi, yi, zi);
 
-	//	// compute catmull-rom interpolation for position
-	//	xi = catmullRom(controlPointsPos[0], i);
-	//	yi = catmullRom(controlPointsPos[1], i);
-	//	zi = catmullRom(controlPointsPos[2], i);
-	//	glm::vec3 posTransform(xi, yi, zi);
+			// compute calmull-rom interpolation for orientation
+			rolli = bSpline(quaternions[0][0], quaternions[0][1], quaternions[0][2], controlPointsOri[0][3], i);
+			yawi = bSpline(controlPointsOri[0][1], controlPointsOri[1][1], controlPointsOri[2][1], controlPointsOri[3][1], i);
+			pitchi = bSpline(controlPointsOri[0][2], controlPointsOri[1][2], controlPointsOri[2][2], controlPointsOri[3][2], i);
 
-	//	// compute calmull-rom interpolation for orientation
-	//	wq = catmullRom(controlPointsOri[0], i);
-	//	xq = catmullRom(controlPointsOri[1], i);
-	//	yq = catmullRom(controlPointsOri[2], i);
-	//	zq = catmullRom(controlPointsOri[3], i);
+			// compute 4x4 transformation matrix 
+			glm::mat4 transformMatrix(1.0f); // identity matrix 
+			transformMatrix = glm::translate(transformMatrix, posTransform);
+			transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
+			transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(0, 0, 1));
+			transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
 
-	//	// compute 4x4 transformation matrix 
-	//	glm::mat4 transformMatrix(1.0f); // identity matrix 
-	//	transformMatrix = glm::translate(transformMatrix, posTransform);
-	//	transformMatrix = glm::rotate(transformMatrix, glm::radians(zq), glm::vec3(0, 0, 1));
-	//	transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
-	//	transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
+			// push result into vector for return
+			transformMatrices.push_back(transformMatrix);
+		}
+	}
+	else if (interpolationMode == 2) {
+		for (float i = 0; i < 1; i += 0.01) {
 
-	//	// push result into vector for return
-	//	transformMatrices.push_back(transformMatrix);
+			// compute catmull-rom interpolation for position
+			xi = bSpline(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i);
+			yi = bSpline(controlPointsPos[0][1], controlPointsPos[1][1], controlPointsPos[2][1], controlPointsPos[3][1], i);
+			zi = bSpline(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i);
+			glm::vec3 posTransform(xi, yi, zi);
 
-	//}
-	//return transformMatrices;
+			// compute calmull-rom interpolation for orientation
+			rolli = bSpline(controlPointsOri[0][0], controlPointsOri[1][0], controlPointsOri[2][0], controlPointsOri[3][0], i);
+			yawi = bSpline(controlPointsOri[0][1], controlPointsOri[1][1], controlPointsOri[2][1], controlPointsOri[3][1], i);
+			pitchi = bSpline(controlPointsOri[0][2], controlPointsOri[1][2], controlPointsOri[2][2], controlPointsOri[3][2], i);
+
+			// compute 4x4 transformation matrix 
+			glm::mat4 transformMatrix(1.0f); // identity matrix 
+			transformMatrix = glm::translate(transformMatrix, posTransform);
+			transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
+			transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(0, 0, 1));
+			transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
+
+			// push result into vector for return
+			transformMatrices.push_back(transformMatrix);
+		}
+	}
+	else {
+		exit(1);
+	}
 
 }
 
