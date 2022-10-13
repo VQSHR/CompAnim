@@ -1,0 +1,11 @@
+﻿cl : command line warning D9035: option 'Gm' has been deprecated and will be removed in a future release
+  SimpleGLUT.cpp
+C:\Users\stone\OneDrive\Documents\coursework\Lab1\SimpleGLUT\SimpleGLUT.cpp(147,22): warning C4101: 'zq': unreferenced local variable
+C:\Users\stone\OneDrive\Documents\coursework\Lab1\SimpleGLUT\SimpleGLUT.cpp(146,10): warning C4101: 'xi': unreferenced local variable
+C:\Users\stone\OneDrive\Documents\coursework\Lab1\SimpleGLUT\SimpleGLUT.cpp(146,14): warning C4101: 'yi': unreferenced local variable
+C:\Users\stone\OneDrive\Documents\coursework\Lab1\SimpleGLUT\SimpleGLUT.cpp(147,14): warning C4101: 'xq': unreferenced local variable
+C:\Users\stone\OneDrive\Documents\coursework\Lab1\SimpleGLUT\SimpleGLUT.cpp(146,18): warning C4101: 'zi': unreferenced local variable
+C:\Users\stone\OneDrive\Documents\coursework\Lab1\SimpleGLUT\SimpleGLUT.cpp(147,10): warning C4101: 'wq': unreferenced local variable
+C:\Users\stone\OneDrive\Documents\coursework\Lab1\SimpleGLUT\SimpleGLUT.cpp(147,18): warning C4101: 'yq': unreferenced local variable
+C:\Users\stone\OneDrive\Documents\coursework\Lab1\SimpleGLUT\SimpleGLUT.cpp(212,20): warning C4018: '<': signed/unsigned mismatch
+  SimpleGLUT.vcxproj -> C:\Users\stone\OneDrive\Documents\coursework\Lab1\SimpleGLUT\Debug\SimpleGLUT.exe
