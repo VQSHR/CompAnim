@@ -220,8 +220,8 @@ void init( void ) {
 	GLint interpolationMode = 1;
 	std::cout << "Select interpolation mode: 1 for Catmull-Rom, 2 for B-Spline.." << "\n";
 	std::cin >> interpolationMode;
-	std::cout << "Enter dt:" << "\n";
-	std::cin >> dt;
+	//std::cout << "Enter dt:" << "\n";
+	//std::cin >> dt;
 
 	if (orientationMode == 1) {
 		eulerOperations(interpolationMode);
