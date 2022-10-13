@@ -298,7 +298,9 @@ void render( void ) {
 	
 	// render objects
 	glutSolidTeapot(1.0);
-
+	glLoadIdentity();
+	glTranslatef(0,0, -20.0);
+	glutSolidTeapot(1.0);
 	// disable lighting
 	glDisable(GL_LIGHT0);
 	glDisable(GL_LIGHTING);
