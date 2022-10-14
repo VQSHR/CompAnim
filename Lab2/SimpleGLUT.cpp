@@ -36,8 +36,18 @@ std::vector<glm::mat4> transformMatrices;
 glm::mat4 transformMat;
 
 
-GLfloat linearInterpolation(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, ) {
-
+GLfloat linearInterpolation(GLfloat p0, GLfloat p1, GLfloat t) {
+	// constructing T, M and P
+	GLfloat MArray[4] = {
+		-1, 1, 
+		1, 0
+	};
+	glm::vec2 T(t, 1);
+	glm::mat2 M = glm::transpose(glm::make_mat2(MArray));
+	glm::vec2 P(p0, p1);
+	// calculate Q(t) = TMP
+	GLfloat result = glm::dot(T * M, P);
+	return result;
 }
 
 GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
