@@ -36,6 +36,10 @@ std::vector<glm::mat4> transformMatrices;
 glm::mat4 transformMat;
 
 
+GLfloat linearInterpolation(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, ) {
+
+}
+
 GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
 	GLdouble t2 = t * t;
 	GLdouble t3 = t2 * t;
