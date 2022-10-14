@@ -4,7 +4,7 @@
 #include <cstring>
 
 #include <glm/glm.hpp>
-
+#include "stdafx.h"
 bool loadOBJ(
 	const char * path, 
 	std::vector<glm::vec3> & out_vertices, 

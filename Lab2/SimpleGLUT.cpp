@@ -314,7 +314,8 @@ void render( void ) {
 	glutSolidTeapot(1.0);
 	glLoadIdentity();
 	glTranslatef(0,0, -20.0);
-	glutSolidTeapot(1.0);
+	glRotatef(-90, 1, 0, 0);
+	gluCylinder(gluNewQuadric(), 1, 1, 3, 20, 10);
 	// disable lighting
 	glDisable(GL_LIGHT0);
 	glDisable(GL_LIGHTING);
