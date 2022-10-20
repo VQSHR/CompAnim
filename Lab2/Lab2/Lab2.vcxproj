@@ -128,10 +128,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="1.model_loading.fs" />
-    <None Include="1.model_loading.vs" />
-    <None Include="lightshader.fs" />
-    <None Include="lightshader.vs" />
+    <None Include="model.fs" />
+    <None Include="model.vs" />
+    <None Include="background.fs" />
+    <None Include="background.vs" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
