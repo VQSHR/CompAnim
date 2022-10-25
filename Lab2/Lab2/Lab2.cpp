@@ -20,8 +20,10 @@ void processInput(GLFWwindow* window);
 
 GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t);
 GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t);
+float lerp(float p0, float p1, float t);
 void eulerOperations(GLint interpolationMode);
 void quaternionOperations(GLint interpolationMode);
+void legMotion();
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -37,17 +39,17 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-// dt defaulted to 0.01
-float dt = 0.001;
+// dt defaulted to 0.001
+float dt = 0.0001;
 
 // startframe
 int frameCount = -1;
 
 // vector of Transformation Matrices for each frame of interpolation
-std::vector<glm::mat4> transformMatrices; // torso
-std::vector<glm::mat4> legT; // leg
-// intermediate matrix
-glm::mat4 transformMat;
+std::vector<glm::mat4> torsoAnim; // torso
+std::vector<glm::mat4> legAnim; // leg
+unsigned int legAnimOffset = 0;
+
 
 // control points 
 GLfloat positionArray[12] = { // positions
@@ -81,7 +83,7 @@ void init(void) {
 	std::cin >> interpolationMode;
 	/*   std::cout << "Enter dt:" << "\n";
 	   std::cin >> dt;*/
-
+	legMotion();
 	if (orientationMode == 1) {
 		eulerOperations(interpolationMode);
 	}
@@ -229,29 +231,39 @@ int main()
 		modelShader.setMat4("projection", projection);
 		modelShader.setMat4("view", view);
 
-		// draw the torso
+		
 		// update the transformation matrix for each frame
-		if (frameCount >= 0 && frameCount < transformMatrices.size()) {
-			transformMat = transformMatrices[frameCount];
-			frameCount++;
+		glm::mat4 torsoMat, legLMat, legRMat;
+		if (frameCount >= 0 && frameCount < torsoAnim.size()) { 
+				torsoMat = torsoAnim[frameCount];
+				legLMat = torsoMat * legAnim[frameCount % legAnim.size()];
+				legRMat = torsoMat * legAnim[(frameCount + legAnimOffset) % legAnim.size()];
+				frameCount++;
+		} else {
+			torsoMat = torsoAnim[torsoAnim.size() - 1];
+			legLMat = legAnim[legAnim.size() - 1];
+			legRMat = legAnim[legAnimOffset];
 		}
-		else {
-			transformMat = transformMatrices[transformMatrices.size() - 1];
-		}
-		glm::mat4 model = transformMat;
-		glm::mat4 torsoModel = glm::scale(model, glm::vec3(0.5f, 0.2f, 0.5f));
+
+		// draw the torso
+		glm::mat4 torsoModel;
+		torsoModel = glm::scale(torsoMat, glm::vec3(0.5f, 0.2f, 0.5f));
 		torsoModel = glm::translate(torsoModel, glm::vec3(0, 10, 0));
 		modelShader.setMat4("model", torsoModel);
 		myModel.Draw(modelShader);
 
 		// draw leg
-		glm::mat4 legModel = glm::scale(model, glm::vec3(0.2f, 0.4f, 0.2f));
-		legModel = glm::translate(legModel, glm::vec3(2, 0, 0));
-		modelShader.setMat4("model", legModel);
+		
+		glm::mat4 legLModel = legLMat;
+		legLModel = glm::translate(legLModel, glm::vec3(.5, 0, 0));
+		legLModel = glm::scale(legLModel, glm::vec3(0.2f, 0.4f, 0.2f));
+		modelShader.setMat4("model", legLModel);
 		myModel.Draw(modelShader);
 
-		legModel = glm::translate(legModel, glm::vec3(-4, 0, 0));
-		modelShader.setMat4("model", legModel);
+		glm::mat4 legRModel = legRMat;
+		legRModel = glm::translate(legRModel, glm::vec3(-.5, 0, 0));
+		legRModel = glm::scale(legRModel, glm::vec3(0.2f, 0.4f, 0.2f));
+		modelShader.setMat4("model", legRModel);
 		myModel.Draw(modelShader);
 
 		// draw floor
@@ -259,7 +271,7 @@ int main()
 		floorShader.setMat4("projection", projection);
 		floorShader.setMat4("view", view);
 		glBindVertexArray(VAO);
-		floorShader.setMat4("model", glm::mat4(1.0f));
+		floorShader.setMat4("model", glm::mat4(1.0));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -349,10 +361,10 @@ GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
 	GLdouble t2 = t * t;
 	GLdouble t3 = t2 * t;
 	GLfloat MArray[16] = {
-		-1 / 6.0, 3 / 6.0, -3 / 6.0, 1 / 6.0,
-		3 / 6.0, -6 / 6.0, 3 / 6.0, 0,
-		-3 / 6.0, 0, 3 / 6.0, 0,
-		1 / 6.0, 4 / 6.0, 1 / 6.0, 0
+		-1 / 6.0,  3 / 6.0, -3 / 6.0, 1 / 6.0,
+		 3 / 6.0, -6 / 6.0,  3 / 6.0,       0,
+		-3 / 6.0,        0,  3 / 6.0,       0,
+		 1 / 6.0,  4 / 6.0,  1 / 6.0,       0
 	};
 	glm::vec4 T(t3, t2, t, 1);
 	glm::mat4 M = glm::transpose(glm::make_mat4(MArray));
@@ -388,11 +400,11 @@ void eulerOperations(GLint interpolationMode) {
 			glm::mat4 transformMatrix(1.0f); // identity matrix 
 			transformMatrix = glm::translate(transformMatrix, posTransform);
 			transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
-			transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(0, 0, 1));
-			transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
+			transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(0, 0, 1));
+			transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(1, 0, 0));
 
 			// push result into vector for return
-			transformMatrices.push_back(transformMatrix);
+			torsoAnim.push_back(transformMatrix);
 		}
 	}
 	else if (interpolationMode == 2) {
@@ -417,7 +429,7 @@ void eulerOperations(GLint interpolationMode) {
 			transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
 
 			// push result into vector for return
-			transformMatrices.push_back(transformMatrix);
+			torsoAnim.push_back(transformMatrix);
 		}
 	}
 	else {
@@ -468,7 +480,7 @@ void quaternionOperations(GLint interpolationMode) {
 			transformMatrix = transformMatrix * rotationMatrix;
 
 			// push result into vector for return
-			transformMatrices.push_back(transformMatrix);
+			torsoAnim.push_back(transformMatrix);
 		}
 	}
 	else if (interpolationMode == 2) {
@@ -495,7 +507,7 @@ void quaternionOperations(GLint interpolationMode) {
 			transformMatrix = transformMatrix * rotationMatrix;
 
 			// push result into vector for return
-			transformMatrices.push_back(transformMatrix);
+			torsoAnim.push_back(transformMatrix);
 		}
 	}
 	else {
@@ -504,6 +516,66 @@ void quaternionOperations(GLint interpolationMode) {
 
 }
 
-void legMotion() {
 
+float lerp(float p0, float p1, float t) {
+	float MArray[4] = { -1, 1, 1, 0 };
+	glm::vec2 T(t, 1);
+	glm::mat2 M = glm::transpose(glm::make_mat2(MArray));
+	glm::vec2 P(p0, p1);
+	GLfloat result = glm::dot(T * M, P);
+	return result;
+}
+
+void legMotion() {
+	float legRotArray[9] = {
+		 135, 0, 0,
+		 225, 0, 0,
+	};
+
+	glm::mat2x3 controlPointsOri = glm::make_mat3x3(legRotArray);
+
+	float rolli, yawi, pitchi;
+	// forward swing
+	for (float i = 0; i < 1; i += (dt*2)) {
+
+		// translate 
+		glm::vec3 posTransform = glm::vec3(0, 10, 0);
+
+		// compute calmull-rom interpolation for orientation
+		rolli = lerp(controlPointsOri[0][0], controlPointsOri[1][0], i);
+		yawi = lerp(controlPointsOri[0][1], controlPointsOri[1][1], i);
+		pitchi = lerp(controlPointsOri[0][2], controlPointsOri[1][2], i);
+
+		// compute 4x4 transformation matrix 
+		glm::mat4 transformMatrix(1.0f); // identity matrix 
+		transformMatrix = glm::translate(transformMatrix, posTransform);
+		transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
+		transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
+		transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(0, 0, 1));
+
+		// push result into vector for return
+		legAnim.push_back(transformMatrix);
+	}
+	legAnimOffset = legAnim.size();
+	// backward swing
+	for (float i = 1; i > 0; i -= (dt * 2)) {
+
+		// translate 
+		glm::vec3 posTransform = glm::vec3(0, 10, 0);
+
+		// compute calmull-rom interpolation for orientation
+		rolli = lerp(controlPointsOri[0][0], controlPointsOri[1][0], i);
+		yawi = lerp(controlPointsOri[0][1], controlPointsOri[1][1], i);
+		pitchi = lerp(controlPointsOri[0][2], controlPointsOri[1][2], i);
+
+		// compute 4x4 transformation matrix 
+		glm::mat4 transformMatrix(1.0f); // identity matrix 
+		transformMatrix = glm::translate(transformMatrix, posTransform);
+		transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
+		transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
+		transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(0, 0, 1));
+
+		// push result into vector for return
+		legAnim.push_back(transformMatrix);
+	}
 }
