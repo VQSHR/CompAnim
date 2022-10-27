@@ -1,2 +1,0 @@
-C:\Users\stone\OneDrive\Documents\coursework\SimpleGLUT_0\SimpleGLUT\Debug\SimpleGLUT.exe
-C:\Users\stone\OneDrive\Documents\coursework\Lab1\SimpleGLUT\Debug\SimpleGLUT.exe
