@@ -30,7 +30,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 // camera
-Camera camera(glm::vec3(0.0f, 20.0f, 20.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -45.0f);
+Camera camera(glm::vec3(0.0f, 10.0f, 25.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -20.0f);
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -40,7 +40,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 // dt defaulted to 0.001
-float dt = 0.0001;
+float dt = 0.005;
 
 // startframe
 int frameCount = -1;
@@ -48,22 +48,22 @@ int frameCount = -1;
 // vector of Transformation Matrices for each frame of interpolation
 std::vector<glm::mat4> torsoAnim; // torso
 std::vector<glm::mat4> legAnim; // leg
-unsigned int legAnimOffset = 0;
+size_t legAnimOffset = 0;
 
 
 // control points 
 GLfloat positionArray[12] = { // positions
+	-9.0,  0, -9,
 	-9.0,  0,  9,
-	-4.5,  0, -6,
-	 4.5,  0,  6,
-	 9.0,  0, -9
+	 9.0,  0, -9,
+	 9.0,  0,  9
 };
 
 GLfloat eulerOriArray[12] = { // orientation in euler angles
+	0, 90, 0,
 	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0 
+	0, -90, 0,
+	0, 90, 0 
 };
 
 // lighting
@@ -192,7 +192,7 @@ int main()
 		float currentFrame = static_cast<float>(glfwGetTime());
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		
+		//std::cout << deltaTime;
 
 		// input
 		// -----
@@ -241,8 +241,8 @@ int main()
 				frameCount++;
 		} else {
 			torsoMat = torsoAnim[torsoAnim.size() - 1];
-			legLMat = legAnim[legAnim.size() - 1];
-			legRMat = legAnim[legAnimOffset];
+			legLMat = torsoMat * legAnim[legAnim.size() - 1];
+			legRMat = torsoMat * legAnim[legAnimOffset];
 		}
 
 		// draw the torso
@@ -347,7 +347,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 	camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
-
+#if 0
 GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
 	GLdouble t2 = t * t;
 	GLdouble t3 = t2 * t;
@@ -355,6 +355,24 @@ GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
 		(-p0 + p2) * t +
 		(2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
 		(-p0 + 3 * p1 - 3 * p2 + p3) * t3) * 0.5;
+}
+#endif
+
+GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
+	GLdouble t2 = t * t;
+	GLdouble t3 = t2 * t;
+	GLfloat MArray[16] = {
+		-0.5,  1.5, -1.5,  0.5,
+		 1.0, -2.5,  2.0, -0.5,
+		-0.5,  0.0,  0.5,  0.0,
+		 0.0,  1.0,  0.0,  0.0
+	};
+	glm::vec4 T(t3, t2, t, 1);
+	glm::mat4 M = glm::transpose(glm::make_mat4(MArray));
+	glm::vec4 P(p0, p1, p2, p3);
+
+	GLfloat result = glm::dot(T * M, P);
+	return result;
 }
 
 GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
@@ -539,7 +557,7 @@ void legMotion() {
 	for (float i = 0; i < 1; i += (dt*2)) {
 
 		// translate 
-		glm::vec3 posTransform = glm::vec3(0, 10, 0);
+		glm::vec3 posTransform = glm::vec3(0, 2, 0);
 
 		// compute calmull-rom interpolation for orientation
 		rolli = lerp(controlPointsOri[0][0], controlPointsOri[1][0], i);
@@ -561,7 +579,7 @@ void legMotion() {
 	for (float i = 1; i > 0; i -= (dt * 2)) {
 
 		// translate 
-		glm::vec3 posTransform = glm::vec3(0, 10, 0);
+		glm::vec3 posTransform = glm::vec3(0, 2, 0);
 
 		// compute calmull-rom interpolation for orientation
 		rolli = lerp(controlPointsOri[0][0], controlPointsOri[1][0], i);
