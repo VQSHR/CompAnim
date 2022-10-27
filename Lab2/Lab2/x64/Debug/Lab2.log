@@ -1,5 +1,0 @@
-﻿  Lab2.cpp
-E:\grad_course\CompAnim\git\Lab2\Lab2\Lab2.cpp(43,17): warning C4305: 'initializing': truncation from 'double' to 'float'
-E:\grad_course\CompAnim\git\Lab2\Lab2\Lab2.cpp(357,38): warning C4244: 'return': conversion from 'GLdouble' to 'GLfloat', possible loss of data
-E:\grad_course\CompAnim\git\Lab2\Lab2\Lab2.cpp(387,2): warning C4305: 'initializing': truncation from 'double' to 'GLfloat'
-  Lab2.vcxproj -> E:\grad_course\CompAnim\git\Lab2\x64\Debug\Lab2.exe
