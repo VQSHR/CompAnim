@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/constants.hpp>
 
 #include "Shader.h"
 #include "Camera.h"
@@ -20,6 +21,8 @@ void processInput(GLFWwindow* window);
 
 GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t);
 GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t);
+float vector2angle(float y, float x);
+
 float lerp(float p0, float p1, float t);
 void eulerOperations(GLint interpolationMode);
 void quaternionOperations(GLint interpolationMode);
@@ -375,6 +378,21 @@ GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
 	return result;
 }
 
+GLfloat catmullRomTan(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
+	GLfloat MArray[16] = {
+		-0.5,  1.5, -1.5,  0.5,
+		 1.0, -2.5,  2.0, -0.5,
+		-0.5,  0.0,  0.5,  0.0,
+		 0.0,  1.0,  0.0,  0.0
+	};
+	glm::vec4 T(3 * t * t, 2 * t, 1, 0);
+	glm::mat4 M = glm::transpose(glm::make_mat4(MArray));
+	glm::vec4 P(p0, p1, p2, p3);
+
+	GLfloat result = glm::dot(T * M, P);
+	return result;
+}
+
 GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
 	GLdouble t2 = t * t;
 	GLdouble t3 = t2 * t;
@@ -390,6 +408,11 @@ GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
 
 	GLfloat result = glm::dot(T * M, P);
 	return result;
+}
+
+float vector2degree(float z, float x)
+{
+	return glm::atan(z, x) * 180 / glm::pi<float>();
 }
 
 void eulerOperations(GLint interpolationMode) {
@@ -472,6 +495,7 @@ void quaternionOperations(GLint interpolationMode) {
 	// intermediate variables
 	GLfloat xi, yi, zi;
 	GLfloat wq, xq, yq, zq;
+	GLfloat tanx, tanz;
 
 
 	if (interpolationMode == 1) {
@@ -499,6 +523,8 @@ void quaternionOperations(GLint interpolationMode) {
 
 			// push result into vector for return
 			torsoAnim.push_back(transformMatrix);
+
+
 		}
 	}
 	else if (interpolationMode == 2) {
