@@ -26,8 +26,8 @@ GLfloat bSplineTan(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t);
 float vector2angle(float y, float x);
 
 float lerp(float p0, float p1, float t);
-void eulerOperations(GLint interpolationMode);
-void quaternionOperations(GLint interpolationMode);
+void eulerOperations(GLint interpolationMode, int segment);
+void quaternionOperations(GLint interpolationMode, int segment);
 void legMotion();
 
 // settings
@@ -35,20 +35,20 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 // camera
-Camera camera(glm::vec3(0.0f, 10.0f, 25.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -20.0f);
+Camera camera(glm::vec3(0.0f, 20.0f, 30.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -40.0f);
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 
 // timing
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
+GLfloat deltaTime = 0.0f;
+GLfloat lastFrame = 0.0f;
 
 // dt defaulted to 0.001
-float dt = 0.00005;
+GLfloat dt = 0.001;
 
 // startframe
-int frameCount = -1;
+GLint frameCount = -1;
 
 // vector of Transformation Matrices for each frame of interpolation
 std::vector<glm::mat4> torsoAnim; // torso
@@ -57,20 +57,28 @@ size_t legAnimOffset = 0;
 
 
 // control points 
-GLfloat positionArray[12] = { // positions
+GLfloat positionArray[24] = { // positions
+	-9.0,  0, -9,
+	-9.0,  0,  9,
+	 9.0,  0, -9,
+	 9.0,  0,  9,
 	-9.0,  0, -9,
 	-9.0,  0,  9,
 	 9.0,  0, -9,
 	 9.0,  0,  9
 };
-
-GLfloat eulerOriArray[12] = { // orientation in euler angles
+#if 1
+GLfloat eulerOriArray[24] = { // orientation in euler angles
 	0, 90, 0,
 	0, 90, 0,
 	0, 90, 0,
-	0, 90, 0 
+	0, 90, 0,
+	0, 90, 0,
+	0, 90, 0,
+	0, 90, 0,
+	0, 90, 0
 };
-
+#endif
 // lighting
 glm::vec3 lightPos(0.0f, 10.0f, 10.0f);
 
@@ -80,20 +88,22 @@ glm::vec3 lightPos(0.0f, 10.0f, 10.0f);
 //================================
 void init(void) {
 	// init something before main loop...
-	GLint orientationMode = 2;
+	GLint rotationMode = 2;
 	//std::cout << "Select rotation mode: 1 for Euler angle, 2 for Quaternion.." << "\n";
 	//std::cin >> orientationMode;
-	GLint interpolationMode = 1;
+	GLint splineMode = 1;
 	std::cout << "Select interpolation mode: \n 1: Catmull-Rom \n 2: B-Spline" << "\n";
-	std::cin >> interpolationMode;
+	std::cin >> splineMode;
 	/*   std::cout << "Enter dt:" << "\n";
 	   std::cin >> dt;*/
 	legMotion();
-	if (orientationMode == 1) {
-		eulerOperations(interpolationMode);
+	if (rotationMode == 1) {
+		for (size_t i = 0; i < 4; i++)
+			quaternionOperations(splineMode, i);
 	}
-	else if (orientationMode == 2) {
-		quaternionOperations(interpolationMode);
+	else if (rotationMode == 2) {
+		for (size_t i = 0; i < 4; i++)
+			quaternionOperations(splineMode, i);
 	}
 	else {
 		exit(1);
@@ -154,10 +164,10 @@ int main()
 
 
 	float vertices[] = {
-		 10.0f, 0,  10.0f,  // top right
-		 10.0f, 0, -10.0f,  // bottom right
-		-10.0f, 0,  10.0f,  // bottom left
-		-10.0f, 0, -10.0f   // top left 
+		 15.0f, 0,  15.0f,  // top right
+		 15.0f, 0, -15.0f,  // bottom right
+		-15.0f, 0,  15.0f,  // bottom left
+		-15.0f, 0, -15.0f   // top left 
 	};
 	unsigned int indices[] = {  // note that we start from 0!
 		0, 1, 3,   // first triangle
@@ -218,8 +228,8 @@ int main()
 		lightColor.x = 1.0f;
 		lightColor.y = 1.0f;
 		lightColor.z = 1.0f;
-		glm::vec3 diffuseColor = lightColor * glm::vec3(0.7f); 
-		glm::vec3 ambientColor = diffuseColor * glm::vec3(1.0f); 
+		glm::vec3 diffuseColor = lightColor * glm::vec3(0.7f);
+		glm::vec3 ambientColor = diffuseColor * glm::vec3(1.0f);
 		modelShader.setVec3("light.ambient", ambientColor);
 		modelShader.setVec3("light.diffuse", diffuseColor);
 		modelShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
@@ -236,15 +246,16 @@ int main()
 		modelShader.setMat4("projection", projection);
 		modelShader.setMat4("view", view);
 
-		
+
 		// update the transformation matrix for each frame
 		glm::mat4 torsoMat, legLMat, legRMat;
-		if (frameCount >= 0 && frameCount < torsoAnim.size()) { 
-				torsoMat = torsoAnim[frameCount];
-				legLMat = torsoMat * legAnim[frameCount % legAnim.size()];
-				legRMat = torsoMat * legAnim[(frameCount + legAnimOffset) % legAnim.size()];
-				frameCount++;
-		} else {
+		if (frameCount >= 0 && frameCount < torsoAnim.size()) {
+			torsoMat = torsoAnim[frameCount];
+			legLMat = torsoMat * legAnim[frameCount % legAnim.size()];
+			legRMat = torsoMat * legAnim[(frameCount + legAnimOffset) % legAnim.size()];
+			frameCount++;
+		}
+		else {
 			int lastframe = torsoAnim.size() - 1;
 			torsoMat = torsoAnim[lastframe];
 			legLMat = torsoMat * legAnim[lastframe % legAnim.size()];
@@ -259,7 +270,7 @@ int main()
 		myModel.Draw(modelShader);
 
 		// draw leg
-		
+
 		glm::mat4 legLModel = legLMat;
 		legLModel = glm::translate(legLModel, glm::vec3(.5, 0, 0));
 		legLModel = glm::scale(legLModel, glm::vec3(0.2f, 0.4f, 0.2f));
@@ -434,10 +445,13 @@ float vector2angle(float z, float x)
 }
 
 #if 1
-void eulerOperations(GLint interpolationMode) {
+void eulerOperations(GLint interpolationMode, int segment) {
 
-	glm::mat4x3 controlPointsPos = glm::make_mat4x3(positionArray);
-	glm::mat4x3 controlPointsOri = glm::make_mat4x3(eulerOriArray);
+	GLfloat* tempCtrlPos = positionArray + segment * 3;
+	GLfloat* tempCtrlOri = eulerOriArray + segment * 3;
+
+	glm::mat4x3 controlPointsPos = glm::make_mat4x3(tempCtrlPos);
+	glm::mat4x3 controlPointsOri = glm::make_mat4x3(tempCtrlOri);
 
 	GLfloat xi, yi, zi;
 	GLfloat rolli, yawi, pitchi;
@@ -500,10 +514,13 @@ void eulerOperations(GLint interpolationMode) {
 
 #endif 
 
-void quaternionOperations(GLint interpolationMode) {
+void quaternionOperations(GLint interpolationMode, int segment) {
 
-	glm::mat4x3 controlPointsPos = glm::make_mat4x3(positionArray);
-	glm::mat4x3 controlPointsOri = glm::make_mat4x3(eulerOriArray);
+	GLfloat* tempCtrlPos = positionArray + segment * 3;
+	GLfloat* tempCtrlOri = eulerOriArray + segment * 3;
+
+	glm::mat4x3 controlPointsPos = glm::make_mat4x3(tempCtrlPos);
+	glm::mat4x3 controlPointsOri = glm::make_mat4x3(tempCtrlOri);
 
 	// convert euler to quaternion
 	std::vector<glm::quat> quaternions;
@@ -518,15 +535,17 @@ void quaternionOperations(GLint interpolationMode) {
 	GLfloat wq, xq, yq, zq;
 	GLfloat angle;
 
-
 	if (interpolationMode == 1) {
 		for (float i = 0; i < 1; i += dt) {
 
 			// compute catmull-rom interpolation for position
+			glm::vec3 posTransform;
 			xi = catmullRom(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i);
 			yi = catmullRom(controlPointsPos[0][1], controlPointsPos[1][1], controlPointsPos[2][1], controlPointsPos[3][1], i);
 			zi = catmullRom(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i);
-			glm::vec3 posTransform(xi, yi, zi);
+			posTransform.x = xi;
+			posTransform.y = yi;
+			posTransform.z = zi;
 
 			// compute calmull-rom interpolation for orientation
 			xq = catmullRom(quaternions[0][0], quaternions[1][0], quaternions[2][0], quaternions[3][0], i);
@@ -611,7 +630,7 @@ void legMotion() {
 
 	float rolli, yawi, pitchi;
 	// forward swing
-	for (float i = 0; i < 1; i += (dt*5)) {
+	for (float i = 0; i < 1; i += (dt * 6)) {
 
 		// compute calmull-rom interpolation for orientation
 		rolli = lerp(controlPointsOri[0][0], controlPointsOri[1][0], i);
@@ -630,7 +649,7 @@ void legMotion() {
 	}
 	legAnimOffset = legAnim.size();
 	// backward swing
-	for (float i = 1; i > 0; i -= (dt * 5)) {
+	for (float i = 1; i > 0; i -= (dt * 6)) {
 
 		// compute calmull-rom interpolation for orientation
 		rolli = lerp(controlPointsOri[0][0], controlPointsOri[1][0], i);
