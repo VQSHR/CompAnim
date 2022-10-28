@@ -19,15 +19,12 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 
-GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t);
-GLfloat catmullRomTan(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t);
-GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t);
-GLfloat bSplineTan(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t);
+GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bool tan);
+GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bool tan);
 float vector2angle(float y, float x);
 
 float lerp(float p0, float p1, float t);
-void eulerOperations(GLint interpolationMode, int segment);
-void quaternionOperations(GLint interpolationMode, int segment);
+void quaternionOperations(GLfloat(*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, bool), int segment);
 void legMotion();
 
 // settings
@@ -87,27 +84,27 @@ glm::vec3 lightPos(0.0f, 10.0f, 10.0f);
 // init
 //================================
 void init(void) {
-	// init something before main loop...
-	GLint rotationMode = 2;
-	//std::cout << "Select rotation mode: 1 for Euler angle, 2 for Quaternion.." << "\n";
-	//std::cin >> orientationMode;
+
 	GLint splineMode = 1;
 	std::cout << "Select interpolation mode: \n 1: Catmull-Rom \n 2: B-Spline" << "\n";
 	std::cin >> splineMode;
 	/*   std::cout << "Enter dt:" << "\n";
 	   std::cin >> dt;*/
+
+	// calculate animation frames
 	legMotion();
-	if (rotationMode == 1) {
+	if (splineMode == 1) {
 		for (size_t i = 0; i < 4; i++)
-			quaternionOperations(splineMode, i);
+			quaternionOperations(catmullRom, i);
 	}
-	else if (rotationMode == 2) {
+	else if (splineMode == 2) {
 		for (size_t i = 0; i < 4; i++)
-			quaternionOperations(splineMode, i);
+			quaternionOperations(bSpline, i);
 	}
 	else {
 		exit(1);
 	}
+
 
 }
 
@@ -218,7 +215,7 @@ int main()
 		glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// don't forget to enable shader before setting uniforms
+		// enable shader before setting uniforms
 		modelShader.use();
 		modelShader.setVec3("light.position", lightPos);
 		modelShader.setVec3("viewPos", camera.Position);
@@ -270,7 +267,6 @@ int main()
 		myModel.Draw(modelShader);
 
 		// draw leg
-
 		glm::mat4 legLModel = legLMat;
 		legLModel = glm::translate(legLModel, glm::vec3(.5, 0, 0));
 		legLModel = glm::scale(legLModel, glm::vec3(0.2f, 0.4f, 0.2f));
@@ -364,74 +360,46 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 	camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
-#if 0
-GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
-	GLdouble t2 = t * t;
-	GLdouble t3 = t2 * t;
-	return ((2 * p1) +
-		(-p0 + p2) * t +
-		(2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
-		(-p0 + 3 * p1 - 3 * p2 + p3) * t3) * 0.5;
-}
-#endif
 
-GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
-	GLdouble t2 = t * t;
-	GLdouble t3 = t2 * t;
+GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bool tan=false) {
 	GLfloat MArray[16] = {
 		-0.5,  1.5, -1.5,  0.5,
 		 1.0, -2.5,  2.0, -0.5,
 		-0.5,  0.0,  0.5,  0.0,
 		 0.0,  1.0,  0.0,  0.0
 	};
-	glm::vec4 T(t3, t2, t, 1);
+	glm::vec4 T;
+	if (!tan) {
+		GLdouble t2 = t * t;
+		GLdouble t3 = t2 * t;
+		T = glm::vec4(t3, t2, t, 1);
+	}
+	else {
+		T = glm::vec4(3 * t * t, 2 * t, 1, 0);
+	}
+	
 	glm::mat4 M = glm::transpose(glm::make_mat4(MArray));
 	glm::vec4 P(p0, p1, p2, p3);
-
 	GLfloat result = glm::dot(T * M, P);
 	return result;
 }
 
-GLfloat catmullRomTan(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
-	GLfloat MArray[16] = {
-		-0.5,  1.5, -1.5,  0.5,
-		 1.0, -2.5,  2.0, -0.5,
-		-0.5,  0.0,  0.5,  0.0,
-		 0.0,  1.0,  0.0,  0.0
-	};
-	glm::vec4 T(3 * t * t, 2 * t, 1, 0);
-	glm::mat4 M = glm::transpose(glm::make_mat4(MArray));
-	glm::vec4 P(p0, p1, p2, p3);
-
-	GLfloat result = glm::dot(T * M, P);
-	return result;
-}
-
-GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
-	GLdouble t2 = t * t;
-	GLdouble t3 = t2 * t;
+GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bool tan=false) {
 	GLfloat MArray[16] = {
 		-1 / 6.0,  3 / 6.0, -3 / 6.0, 1 / 6.0,
 		 3 / 6.0, -6 / 6.0,  3 / 6.0,       0,
 		-3 / 6.0,        0,  3 / 6.0,       0,
 		 1 / 6.0,  4 / 6.0,  1 / 6.0,       0
 	};
-	glm::vec4 T(t3, t2, t, 1);
-	glm::mat4 M = glm::transpose(glm::make_mat4(MArray));
-	glm::vec4 P(p0, p1, p2, p3);
-
-	GLfloat result = glm::dot(T * M, P);
-	return result;
-}
-
-GLfloat bSplineTan(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t) {
-	GLfloat MArray[16] = {
-		-1 / 6.0,  3 / 6.0, -3 / 6.0, 1 / 6.0,
-		 3 / 6.0, -6 / 6.0,  3 / 6.0,       0,
-		-3 / 6.0,        0,  3 / 6.0,       0,
-		 1 / 6.0,  4 / 6.0,  1 / 6.0,       0
-	};
-	glm::vec4 T(3 * t * t, 2 * t, 1, 0);
+	glm::vec4 T;
+	if (!tan) {
+		GLdouble t2 = t * t;
+		GLdouble t3 = t2 * t;
+		T = glm::vec4(t3, t2, t, 1);
+	}
+	else {
+		T = glm::vec4(3 * t * t, 2 * t, 1, 0);
+	}
 	glm::mat4 M = glm::transpose(glm::make_mat4(MArray));
 	glm::vec4 P(p0, p1, p2, p3);
 
@@ -444,77 +412,8 @@ float vector2angle(float z, float x)
 	return glm::atan(z, x);
 }
 
-#if 1
-void eulerOperations(GLint interpolationMode, int segment) {
-
-	GLfloat* tempCtrlPos = positionArray + segment * 3;
-	GLfloat* tempCtrlOri = eulerOriArray + segment * 3;
-
-	glm::mat4x3 controlPointsPos = glm::make_mat4x3(tempCtrlPos);
-	glm::mat4x3 controlPointsOri = glm::make_mat4x3(tempCtrlOri);
-
-	GLfloat xi, yi, zi;
-	GLfloat rolli, yawi, pitchi;
-
-	if (interpolationMode == 1) {
-		for (float i = 0; i < 1; i += dt) {
-
-			// compute catmull-rom interpolation for position
-			xi = catmullRom(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i);
-			yi = catmullRom(controlPointsPos[0][1], controlPointsPos[1][1], controlPointsPos[2][1], controlPointsPos[3][1], i);
-			zi = catmullRom(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i);
-			glm::vec3 posTransform(xi, yi, zi);
-
-			// compute calmull-rom interpolation for orientation
-			rolli = catmullRom(controlPointsOri[0][0], controlPointsOri[1][0], controlPointsOri[2][0], controlPointsOri[3][0], i);
-			yawi = catmullRom(controlPointsOri[0][1], controlPointsOri[1][1], controlPointsOri[2][1], controlPointsOri[3][1], i);
-			pitchi = catmullRom(controlPointsOri[0][2], controlPointsOri[1][2], controlPointsOri[2][2], controlPointsOri[3][2], i);
-
-			// compute 4x4 transformation matrix 
-			glm::mat4 transformMatrix(1.0f); // identity matrix 
-			transformMatrix = glm::translate(transformMatrix, posTransform);
-			transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
-			transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(0, 0, 1));
-			transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(1, 0, 0));
-
-			// push result into vector for return
-			torsoAnim.push_back(transformMatrix);
-		}
-	}
-	else if (interpolationMode == 2) {
-		for (float i = 0; i < 1; i += dt) {
-
-			// compute bSpline interpolation for position
-			xi = bSpline(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i);
-			yi = bSpline(controlPointsPos[0][1], controlPointsPos[1][1], controlPointsPos[2][1], controlPointsPos[3][1], i);
-			zi = bSpline(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i);
-			glm::vec3 posTransform(xi, yi, zi);
-
-			// compute bSpline interpolation for orientation
-			rolli = bSpline(controlPointsOri[0][0], controlPointsOri[1][0], controlPointsOri[2][0], controlPointsOri[3][0], i);
-			yawi = bSpline(controlPointsOri[0][1], controlPointsOri[1][1], controlPointsOri[2][1], controlPointsOri[3][1], i);
-			pitchi = bSpline(controlPointsOri[0][2], controlPointsOri[1][2], controlPointsOri[2][2], controlPointsOri[3][2], i);
-
-			// compute 4x4 transformation matrix 
-			glm::mat4 transformMatrix(1.0f); // identity matrix 
-			transformMatrix = glm::translate(transformMatrix, posTransform);
-			transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
-			transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(0, 0, 1));
-			transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
-
-			// push result into vector for return
-			torsoAnim.push_back(transformMatrix);
-		}
-	}
-	else {
-		exit(1);
-	}
-
-}
-
-#endif 
-
-void quaternionOperations(GLint interpolationMode, int segment) {
+// calculate spline for 4 control points
+void quaternionOperations(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, bool), int segment) {
 
 	GLfloat* tempCtrlPos = positionArray + segment * 3;
 	GLfloat* tempCtrlOri = eulerOriArray + segment * 3;
@@ -535,81 +434,44 @@ void quaternionOperations(GLint interpolationMode, int segment) {
 	GLfloat wq, xq, yq, zq;
 	GLfloat angle;
 
-	if (interpolationMode == 1) {
-		for (float i = 0; i < 1; i += dt) {
+	for (float i = 0; i < 1; i += dt) {
 
-			// compute catmull-rom interpolation for position
-			glm::vec3 posTransform;
-			xi = catmullRom(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i);
-			yi = catmullRom(controlPointsPos[0][1], controlPointsPos[1][1], controlPointsPos[2][1], controlPointsPos[3][1], i);
-			zi = catmullRom(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i);
-			posTransform.x = xi;
-			posTransform.y = yi;
-			posTransform.z = zi;
+		// compute catmull-rom interpolation for position
+		glm::vec3 posTransform;
+		xi = splineFunc(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i, false);
+		yi = splineFunc(controlPointsPos[0][1], controlPointsPos[1][1], controlPointsPos[2][1], controlPointsPos[3][1], i, false);
+		zi = splineFunc(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i, false);
+		posTransform.x = xi;
+		posTransform.y = yi;
+		posTransform.z = zi;
 
-			// compute calmull-rom interpolation for orientation
-			xq = catmullRom(quaternions[0][0], quaternions[1][0], quaternions[2][0], quaternions[3][0], i);
-			yq = catmullRom(quaternions[0][1], quaternions[1][1], quaternions[2][1], quaternions[3][1], i);
-			zq = catmullRom(quaternions[0][2], quaternions[1][2], quaternions[2][2], quaternions[3][2], i);
-			wq = catmullRom(quaternions[0][3], quaternions[1][3], quaternions[2][3], quaternions[3][3], i);
-			glm::quat quaternion(wq, xq, yq, zq);
-			quaternion = glm::normalize(quaternion);
+		// compute calmull-rom interpolation for orientation
+		xq = splineFunc(quaternions[0][0], quaternions[1][0], quaternions[2][0], quaternions[3][0], i, false);
+		yq = splineFunc(quaternions[0][1], quaternions[1][1], quaternions[2][1], quaternions[3][1], i, false);
+		zq = splineFunc(quaternions[0][2], quaternions[1][2], quaternions[2][2], quaternions[3][2], i, false);
+		wq = splineFunc(quaternions[0][3], quaternions[1][3], quaternions[2][3], quaternions[3][3], i, false);
+		glm::quat quaternion(wq, xq, yq, zq);
+		quaternion = glm::normalize(quaternion);
 
-			float tanx = catmullRomTan(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i);
-			float tanz = catmullRomTan(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i);
-			angle = vector2angle(tanx, tanz);
+		float tanx = splineFunc(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i, true);
+		float tanz = splineFunc(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i, true);
+		angle = vector2angle(tanx, tanz);
 
-			// compute 4x4 transformation matrix 
-			glm::mat4 transformMatrix(1.0f); // identity matrix 
-			transformMatrix = glm::translate(transformMatrix, posTransform);
+		// compute 4x4 transformation matrix 
+		glm::mat4 transformMatrix(1.0f); // identity matrix 
+		transformMatrix = glm::translate(transformMatrix, posTransform);
 
-			quaternion = glm::normalize(glm::quat(glm::vec3(0, angle, 0)));
-			glm::mat4 rotationMatrix = glm::toMat4(quaternion);
-			transformMatrix = transformMatrix * rotationMatrix;
+		quaternion = glm::normalize(glm::quat(glm::vec3(0, angle, 0)));
+		glm::mat4 rotationMatrix = glm::toMat4(quaternion);
+		transformMatrix = transformMatrix * rotationMatrix;
 
-			// push result into vector for return
-			torsoAnim.push_back(transformMatrix);
-		}
-	}
-	else if (interpolationMode == 2) {
-		for (float i = 0; i < 1; i += dt) {
-
-			// compute bSpline interpolation for position
-			xi = bSpline(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i);
-			yi = bSpline(controlPointsPos[0][1], controlPointsPos[1][1], controlPointsPos[2][1], controlPointsPos[3][1], i);
-			zi = bSpline(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i);
-			glm::vec3 posTransform(xi, yi, zi);
-
-			// compute bSpline interpolation for orientation
-			xq = bSpline(quaternions[0][0], quaternions[1][0], quaternions[2][0], quaternions[3][0], i);
-			yq = bSpline(quaternions[0][1], quaternions[1][1], quaternions[2][1], quaternions[3][1], i);
-			zq = bSpline(quaternions[0][2], quaternions[1][2], quaternions[2][2], quaternions[3][2], i);
-			wq = bSpline(quaternions[0][3], quaternions[1][3], quaternions[2][3], quaternions[3][3], i);
-			glm::quat quaternion(wq, xq, yq, zq);
-			quaternion = glm::normalize(quaternion);
-
-			float tanx = bSplineTan(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i);
-			float tanz = bSplineTan(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i);
-			angle = vector2angle(tanx, tanz);
-
-			// compute 4x4 transformation matrix 
-			glm::mat4 transformMatrix(1.0f); // identity matrix 
-			transformMatrix = glm::translate(transformMatrix, posTransform);
-
-			quaternion = glm::normalize(glm::quat(glm::vec3(0, angle, 0)));
-			glm::mat4 rotationMatrix = glm::toMat4(quaternion);
-			transformMatrix = transformMatrix * rotationMatrix;
-
-			// push result into vector for return
-			torsoAnim.push_back(transformMatrix);
-		}
-	}
-	else {
-		exit(1);
+		// push result into vector for return
+		torsoAnim.push_back(transformMatrix);
 	}
 
 }
 
+// linear interpolation
 float lerp(float p0, float p1, float t) {
 	float MArray[4] = { -1, 1, 1, 0 };
 	glm::vec2 T(t, 1);
