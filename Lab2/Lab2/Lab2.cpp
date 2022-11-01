@@ -22,6 +22,8 @@ void processInput(GLFWwindow* window);
 GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bool tan);
 GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bool tan);
 float vector2angle(float y, float x);
+glm::quat euler2quat(glm::vec3 eularAngles);
+glm::mat4 quat2mat4(glm::quat q);
 
 float lerp(float p0, float p1, float t);
 void quaternionOperations(GLfloat(*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, bool), int segment);
@@ -44,14 +46,13 @@ GLfloat lastFrame = 0.0f;
 // dt defaulted to 0.001
 GLfloat dt = 0.001;
 
-// startframe
+// frame index
 GLint frameCount = -1;
 
 // vector of Transformation Matrices for each frame of interpolation
 std::vector<glm::mat4> torsoAnim; // torso
 std::vector<glm::mat4> legAnim; // leg
 size_t legAnimOffset = 0;
-
 
 // control points 
 GLfloat positionArray[24] = { // positions
@@ -64,18 +65,7 @@ GLfloat positionArray[24] = { // positions
 	 9.0,  0, -9,
 	 9.0,  0,  9
 };
-#if 0
-GLfloat eulerOriArray[24] = { // orientation in euler angles
-	0, 90, 0,
-	0, 90, 0,
-	0, 90, 0,
-	0, 90, 0,
-	0, 90, 0,
-	0, 90, 0,
-	0, 90, 0,
-	0, 90, 0
-};
-#endif
+
 // lighting
 glm::vec3 lightPos(0.0f, 10.0f, 10.0f);
 
@@ -159,14 +149,14 @@ int main()
 	// -----------
 	Model myModel("untitled.obj");
 
-
+	// vertices info for drawing the floor
 	float vertices[] = {
 		 15.0f, 0,  15.0f,  // top right
 		 15.0f, 0, -15.0f,  // bottom right
 		-15.0f, 0,  15.0f,  // bottom left
 		-15.0f, 0, -15.0f   // top left 
 	};
-	unsigned int indices[] = {  // note that we start from 0!
+	unsigned int indices[] = {  
 		0, 1, 3,   // first triangle
 		0, 2, 3    // second triangle
 	};
@@ -266,13 +256,13 @@ int main()
 		modelShader.setMat4("model", torsoModel);
 		myModel.Draw(modelShader);
 
-		// draw leg
+		// draw left leg
 		glm::mat4 legLModel = legLMat;
 		legLModel = glm::translate(legLModel, glm::vec3(.5, 0, 0));
 		legLModel = glm::scale(legLModel, glm::vec3(0.2f, 0.4f, 0.2f));
 		modelShader.setMat4("model", legLModel);
 		myModel.Draw(modelShader);
-
+		// draw right leg
 		glm::mat4 legRModel = legRMat;
 		legRModel = glm::translate(legRModel, glm::vec3(-.5, 0, 0));
 		legRModel = glm::scale(legRModel, glm::vec3(0.2f, 0.4f, 0.2f));
@@ -412,26 +402,49 @@ float vector2angle(float z, float x)
 	return glm::atan(z, x);
 }
 
+glm::quat quatMul(glm::quat q1, glm::quat q2) {
+	glm::quat q;
+	float w1 = q1.w;
+	float w2 = q2.w;
+	glm::vec3 v1(q1.x, q1.y, q1.z);
+	glm::vec3 v2(q2.x, q2.y, q2.z);
+
+	q.w = w1 * w2 - glm::dot(v1, v2);
+	glm::vec3 v = w1 * v2 + w2 * v1 + glm::cross(v1, v2);
+	q.x = v.x;
+	q.y = v.y;
+	q.z = v.z;
+	return q;
+}
+
+glm::quat euler2quat(glm::vec3 eulerAngles)
+{
+	float x = eulerAngles.x * 0.5;
+	float y = eulerAngles.y * 0.5;
+	float z = eulerAngles.z * 0.5;
+
+	glm::quat qz, qy, qx;
+	qz = glm::quat(glm::cos(z), 0, 0, glm::sin(z));
+	qy = glm::quat(glm::cos(y), 0, glm::sin(y), 0);
+	qx = glm::quat(glm::cos(x), glm::sin(x), 0, 0);
+
+	glm::quat q = quatMul(quatMul(qz, qy), qx);
+	return q;
+}
+
+glm::mat4 quat2mat4(glm::quat q) {
+	return glm::toMat4(q);
+}
+
 // calculate spline for 4 control points
 void quaternionOperations(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, bool), int segment) {
 
 	GLfloat* tempCtrlPos = positionArray + segment * 3;
-	//GLfloat* tempCtrlOri = eulerOriArray + segment * 3;
 
 	glm::mat4x3 controlPointsPos = glm::make_mat4x3(tempCtrlPos);
-	//glm::mat4x3 controlPointsOri = glm::make_mat4x3(tempCtrlOri);
-
-	// convert euler to quaternion
-	/*std::vector<glm::quat> quaternions;
-	for (int k = 0; k < 4; k++) {
-		glm::vec3 eulerAngles = glm::radians(controlPointsOri[k]);
-		glm::quat q = glm::quat(eulerAngles);
-		quaternions.push_back(q);
-	}*/
 
 	// intermediate variables
 	GLfloat xi, yi, zi;
-	//GLfloat wq, xq, yq, zq;
 	GLfloat angle;
 
 	for (float i = 0; i < 1; i += dt) {
@@ -445,24 +458,19 @@ void quaternionOperations(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLflo
 		posTransform.y = yi;
 		posTransform.z = zi;
 
-		// compute calmull-rom interpolation for orientation
-		/*xq = splineFunc(quaternions[0][0], quaternions[1][0], quaternions[2][0], quaternions[3][0], i, false);
-		yq = splineFunc(quaternions[0][1], quaternions[1][1], quaternions[2][1], quaternions[3][1], i, false);
-		zq = splineFunc(quaternions[0][2], quaternions[1][2], quaternions[2][2], quaternions[3][2], i, false);
-		wq = splineFunc(quaternions[0][3], quaternions[1][3], quaternions[2][3], quaternions[3][3], i, false);
-		*/
+		// calculate tangent along the spline to set facing direction
 		glm::quat quaternion = glm::normalize(quaternion);
-
 		float tanx = splineFunc(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i, true);
 		float tanz = splineFunc(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i, true);
 		angle = vector2angle(tanx, tanz);
 
 		// compute 4x4 transformation matrix 
-		glm::mat4 transformMatrix(1.0f); // identity matrix 
+		glm::mat4 transformMatrix(1.0f);
+		// translation 
 		transformMatrix = glm::translate(transformMatrix, posTransform);
-
-		quaternion = glm::normalize(glm::quat(glm::vec3(0, angle, 0)));
-		glm::mat4 rotationMatrix = glm::toMat4(quaternion);
+		// rotation
+		quaternion = euler2quat(glm::vec3(0, angle, 0));
+		glm::mat4 rotationMatrix = quat2mat4(quaternion);
 		transformMatrix = transformMatrix * rotationMatrix;
 
 		// push result into vector for return
@@ -481,16 +489,21 @@ float lerp(float p0, float p1, float t) {
 	return result;
 }
 
+// define animation for legs wrt. torso
 void legMotion() {
+
+	// control points for leg rotation
 	float legRotArray[9] = {
 		 135, 0, 0,
 		 225, 0, 0,
 	};
 
+	// fix the position wrt. torso
 	glm::vec3 posTransform = glm::vec3(0, 2.2, 0);
 	glm::mat2x3 controlPointsOri = glm::make_mat3x3(legRotArray);
 
 	float rolli, yawi, pitchi;
+
 	// forward swing
 	for (float i = 0; i < 1; i += (dt * 6)) {
 
@@ -509,7 +522,10 @@ void legMotion() {
 		// push result into vector for return
 		legAnim.push_back(transformMatrix);
 	}
+
+	// record the mid-point for leg animation to offset right leg animation on left leg animation
 	legAnimOffset = legAnim.size();
+
 	// backward swing
 	for (float i = 1; i > 0; i -= (dt * 6)) {
 
