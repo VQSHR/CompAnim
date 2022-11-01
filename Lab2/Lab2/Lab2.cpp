@@ -64,7 +64,7 @@ GLfloat positionArray[24] = { // positions
 	 9.0,  0, -9,
 	 9.0,  0,  9
 };
-#if 1
+#if 0
 GLfloat eulerOriArray[24] = { // orientation in euler angles
 	0, 90, 0,
 	0, 90, 0,
@@ -416,22 +416,22 @@ float vector2angle(float z, float x)
 void quaternionOperations(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, bool), int segment) {
 
 	GLfloat* tempCtrlPos = positionArray + segment * 3;
-	GLfloat* tempCtrlOri = eulerOriArray + segment * 3;
+	//GLfloat* tempCtrlOri = eulerOriArray + segment * 3;
 
 	glm::mat4x3 controlPointsPos = glm::make_mat4x3(tempCtrlPos);
-	glm::mat4x3 controlPointsOri = glm::make_mat4x3(tempCtrlOri);
+	//glm::mat4x3 controlPointsOri = glm::make_mat4x3(tempCtrlOri);
 
 	// convert euler to quaternion
-	std::vector<glm::quat> quaternions;
+	/*std::vector<glm::quat> quaternions;
 	for (int k = 0; k < 4; k++) {
 		glm::vec3 eulerAngles = glm::radians(controlPointsOri[k]);
 		glm::quat q = glm::quat(eulerAngles);
 		quaternions.push_back(q);
-	}
+	}*/
 
 	// intermediate variables
 	GLfloat xi, yi, zi;
-	GLfloat wq, xq, yq, zq;
+	//GLfloat wq, xq, yq, zq;
 	GLfloat angle;
 
 	for (float i = 0; i < 1; i += dt) {
@@ -446,12 +446,12 @@ void quaternionOperations(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLflo
 		posTransform.z = zi;
 
 		// compute calmull-rom interpolation for orientation
-		xq = splineFunc(quaternions[0][0], quaternions[1][0], quaternions[2][0], quaternions[3][0], i, false);
+		/*xq = splineFunc(quaternions[0][0], quaternions[1][0], quaternions[2][0], quaternions[3][0], i, false);
 		yq = splineFunc(quaternions[0][1], quaternions[1][1], quaternions[2][1], quaternions[3][1], i, false);
 		zq = splineFunc(quaternions[0][2], quaternions[1][2], quaternions[2][2], quaternions[3][2], i, false);
 		wq = splineFunc(quaternions[0][3], quaternions[1][3], quaternions[2][3], quaternions[3][3], i, false);
-		glm::quat quaternion(wq, xq, yq, zq);
-		quaternion = glm::normalize(quaternion);
+		*/
+		glm::quat quaternion = glm::normalize(quaternion);
 
 		float tanx = splineFunc(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i, true);
 		float tanz = splineFunc(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i, true);
