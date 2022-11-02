@@ -433,7 +433,23 @@ glm::quat euler2quat(glm::vec3 eulerAngles)
 }
 
 glm::mat4 quat2mat4(glm::quat q) {
-	return glm::toMat4(q);
+	float w = q.w;
+	float x = q.x;
+	float y = q.y;
+	float z = q.z;
+
+	float x2 = x * x;
+	float y2 = y * y;
+	float z2 = z * z;
+
+	float mat4array[16] = {
+		1 - 2 * y2 - 2 * z2,   2 * x * y - 2 * w * z,   2 * x * z + 2 * w * y, 0,
+		  2 * x * y + 2 * w * z, 1 - 2 * x2 - 2 * z2,   2 * y * z - 2 * w * x, 0,
+		  2 * x * z - 2 * w * y,   2 * y * z + 2 * w * x, 1 - 2 * x2 - 2 * y2, 0,
+					  0,               0,               0, 1
+	};
+
+	return glm::transpose(glm::make_mat4(mat4array));
 }
 
 // calculate spline for 4 control points
