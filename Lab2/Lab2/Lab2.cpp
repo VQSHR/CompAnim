@@ -14,30 +14,31 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void processInput(GLFWwindow* window);
+GLvoid framebuffer_size_callback(GLFWwindow* window, GLint width, GLint height);
+GLvoid mouse_callback(GLFWwindow* window, GLdouble xpos, GLdouble ypos);
+GLvoid scroll_callback(GLFWwindow* window, GLdouble xoffset, GLdouble yoffset);
+GLvoid processInput(GLFWwindow* window);
 
-GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bool tan);
-GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bool tan);
-float vector2angle(float y, float x);
+GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, GLboolean tan);
+GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, GLboolean tan);
+GLfloat vector2angle(GLfloat y, GLfloat x);
 glm::quat euler2quat(glm::vec3 eularAngles);
 glm::mat4 quat2mat4(glm::quat q);
 
-float lerp(float p0, float p1, float t);
-void quaternionOperations(GLfloat(*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, bool), int segment);
-void legMotion();
+GLfloat lerp(GLfloat p0, GLfloat p1, GLfloat t);
+GLvoid quaternionOperations(GLfloat(*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLboolean), GLint segment);
+GLvoid legMotion();
 
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const GLuint SCR_WIDTH = 800;
+const GLuint SCR_HEIGHT = 600;
 
 // camera
 Camera camera(glm::vec3(0.0f, 20.0f, 30.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -40.0f);
-float lastX = SCR_WIDTH / 2.0f;
-float lastY = SCR_HEIGHT / 2.0f;
-bool firstMouse = true;
+
+GLfloat lastX = SCR_WIDTH / 2.0f;
+GLfloat lastY = SCR_HEIGHT / 2.0f;
+GLboolean firstMouse = true;
 
 // timing
 GLfloat deltaTime = 0.0f;
@@ -47,7 +48,8 @@ GLfloat lastFrame = 0.0f;
 GLfloat dt = 0.001;
 
 // frame index
-GLint frameCount = -1;
+GLint frameCount = 0;
+GLint animFrameCount = -1;
 
 // vector of Transformation Matrices for each frame of interpolation
 std::vector<glm::mat4> torsoAnim; // torso
@@ -73,7 +75,7 @@ glm::vec3 lightPos(0.0f, 10.0f, 10.0f);
 //================================
 // init
 //================================
-void init(void) {
+GLvoid init(GLvoid) {
 
 	GLint splineMode = 1;
 	std::cout << "Select interpolation mode: \n 1: Catmull-Rom \n 2: B-Spline" << "\n";
@@ -98,7 +100,7 @@ void init(void) {
 
 }
 
-int main()
+GLint main()
 {
 	init();
 	// glfw: initialize and configure
@@ -150,19 +152,19 @@ int main()
 	Model myModel("untitled.obj");
 
 	// vertices info for drawing the floor
-	float vertices[] = {
+	GLfloat vertices[] = {
 		 15.0f, 0,  15.0f,  // top right
 		 15.0f, 0, -15.0f,  // bottom right
 		-15.0f, 0,  15.0f,  // bottom left
 		-15.0f, 0, -15.0f   // top left 
 	};
-	unsigned int indices[] = {  
+	GLuint indices[] = {  
 		0, 1, 3,   // first triangle
 		0, 2, 3    // second triangle
 	};
 
 	// bind VBO VAO EBO for floor
-	unsigned int VBO, VAO, EBO;
+	GLuint VBO, VAO, EBO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
 	glGenBuffers(1, &EBO);
@@ -175,7 +177,7 @@ int main()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 	// unbind buffer
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -191,7 +193,7 @@ int main()
 	{
 		// per-frame time logic
 		// --------------------
-		float currentFrame = static_cast<float>(glfwGetTime());
+		GLfloat currentFrame = static_cast<GLfloat>(glfwGetTime());
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 		//std::cout << deltaTime;
@@ -215,20 +217,20 @@ int main()
 		lightColor.x = 1.0f;
 		lightColor.y = 1.0f;
 		lightColor.z = 1.0f;
-		glm::vec3 diffuseColor = lightColor * glm::vec3(0.7f);
-		glm::vec3 ambientColor = diffuseColor * glm::vec3(1.0f);
+		glm::vec3 diffuseColor = lightColor * glm::vec3(1.0f);
+		glm::vec3 ambientColor = diffuseColor * glm::vec3(0.1f);
 		modelShader.setVec3("light.ambient", ambientColor);
 		modelShader.setVec3("light.diffuse", diffuseColor);
 		modelShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
 
 		// material properties
-		modelShader.setVec3("material.ambient", 1.0f, 0.5f, 0.31f);
-		modelShader.setVec3("material.diffuse", 1.0f, 0.5f, 0.31f);
+		modelShader.setVec3("material.ambient", 1.0f, 1.0f, 1.0f);
+		modelShader.setVec3("material.diffuse", 0.3f, 0.3f, 0.7f);
 		modelShader.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
-		modelShader.setFloat("material.shininess", 32.0f);
+		modelShader.setFloat("material.shininess", 2.0f);
 
 		// view/projection transformations
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
 		modelShader.setMat4("projection", projection);
 		modelShader.setMat4("view", view);
@@ -236,14 +238,14 @@ int main()
 
 		// update the transformation matrix for each frame
 		glm::mat4 torsoMat, legLMat, legRMat;
-		if (frameCount >= 0 && frameCount < torsoAnim.size()) {
-			torsoMat = torsoAnim[frameCount];
-			legLMat = torsoMat * legAnim[frameCount % legAnim.size()];
-			legRMat = torsoMat * legAnim[(frameCount + legAnimOffset) % legAnim.size()];
-			frameCount++;
+		if (animFrameCount >= 0 && animFrameCount < torsoAnim.size()) {
+			torsoMat = torsoAnim[animFrameCount];
+			legLMat = torsoMat * legAnim[animFrameCount % legAnim.size()];
+			legRMat = torsoMat * legAnim[(animFrameCount + legAnimOffset) % legAnim.size()];
+			animFrameCount++;
 		}
 		else {
-			int lastframe = torsoAnim.size() - 1;
+			GLint lastframe = torsoAnim.size() - 1;
 			torsoMat = torsoAnim[lastframe];
 			legLMat = torsoMat * legAnim[lastframe % legAnim.size()];
 			legRMat = torsoMat * legAnim[(lastframe + legAnimOffset) % legAnim.size()];
@@ -291,7 +293,7 @@ int main()
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow* window)
+GLvoid processInput(GLFWwindow* window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
@@ -307,13 +309,13 @@ void processInput(GLFWwindow* window)
 
 	// press SPACE to start animation
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-		frameCount = 0;
+		animFrameCount = 0;
 
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+GLvoid framebuffer_size_callback(GLFWwindow* window, GLint width, GLint height)
 {
 	// make sure the viewport matches the new window dimensions; note that width and 
 	// height will be significantly larger than specified on retina displays.
@@ -322,10 +324,10 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 // glfw: whenever the mouse moves, this callback is called
 // -------------------------------------------------------
-void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
+GLvoid mouse_callback(GLFWwindow* window, GLdouble xposIn, GLdouble yposIn)
 {
-	float xpos = static_cast<float>(xposIn);
-	float ypos = static_cast<float>(yposIn);
+	GLfloat xpos = static_cast<GLfloat>(xposIn);
+	GLfloat ypos = static_cast<GLfloat>(yposIn);
 
 	if (firstMouse)
 	{
@@ -334,8 +336,8 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 		firstMouse = false;
 	}
 
-	float xoffset = xpos - lastX;
-	float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+	GLfloat xoffset = xpos - lastX;
+	GLfloat yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
 
 	lastX = xpos;
 	lastY = ypos;
@@ -345,13 +347,13 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 
 // glfw: whenever the mouse scroll wheel scrolls, this callback is called
 // ----------------------------------------------------------------------
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+GLvoid scroll_callback(GLFWwindow* window, GLdouble xoffset, GLdouble yoffset)
 {
-	camera.ProcessMouseScroll(static_cast<float>(yoffset));
+	camera.ProcessMouseScroll(static_cast<GLfloat>(yoffset));
 }
 
 
-GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bool tan=false) {
+GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, GLboolean tan=false) {
 	GLfloat MArray[16] = {
 		-0.5,  1.5, -1.5,  0.5,
 		 1.0, -2.5,  2.0, -0.5,
@@ -374,7 +376,7 @@ GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bo
 	return result;
 }
 
-GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bool tan=false) {
+GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, GLboolean tan=false) {
 	GLfloat MArray[16] = {
 		-1 / 6.0,  3 / 6.0, -3 / 6.0, 1 / 6.0,
 		 3 / 6.0, -6 / 6.0,  3 / 6.0,       0,
@@ -397,15 +399,15 @@ GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, bool 
 	return result;
 }
 
-float vector2angle(float z, float x)
+GLfloat vector2angle(GLfloat z, GLfloat x)
 {
 	return glm::atan(z, x);
 }
 
 glm::quat quatMul(glm::quat q1, glm::quat q2) {
 	glm::quat q;
-	float w1 = q1.w;
-	float w2 = q2.w;
+	GLfloat w1 = q1.w;
+	GLfloat w2 = q2.w;
 	glm::vec3 v1(q1.x, q1.y, q1.z);
 	glm::vec3 v2(q2.x, q2.y, q2.z);
 
@@ -419,9 +421,9 @@ glm::quat quatMul(glm::quat q1, glm::quat q2) {
 
 glm::quat euler2quat(glm::vec3 eulerAngles)
 {
-	float x = eulerAngles.x * 0.5;
-	float y = eulerAngles.y * 0.5;
-	float z = eulerAngles.z * 0.5;
+	GLfloat x = eulerAngles.x * 0.5;
+	GLfloat y = eulerAngles.y * 0.5;
+	GLfloat z = eulerAngles.z * 0.5;
 
 	glm::quat qz, qy, qx;
 	qz = glm::quat(glm::cos(z), 0, 0, glm::sin(z));
@@ -433,16 +435,16 @@ glm::quat euler2quat(glm::vec3 eulerAngles)
 }
 
 glm::mat4 quat2mat4(glm::quat q) {
-	float w = q.w;
-	float x = q.x;
-	float y = q.y;
-	float z = q.z;
+	GLfloat w = q.w;
+	GLfloat x = q.x;
+	GLfloat y = q.y;
+	GLfloat z = q.z;
 
-	float x2 = x * x;
-	float y2 = y * y;
-	float z2 = z * z;
+	GLfloat x2 = x * x;
+	GLfloat y2 = y * y;
+	GLfloat z2 = z * z;
 
-	float mat4array[16] = {
+	GLfloat mat4array[16] = {
 		1 - 2 * y2 - 2 * z2,   2 * x * y - 2 * w * z,   2 * x * z + 2 * w * y, 0,
 		  2 * x * y + 2 * w * z, 1 - 2 * x2 - 2 * z2,   2 * y * z - 2 * w * x, 0,
 		  2 * x * z - 2 * w * y,   2 * y * z + 2 * w * x, 1 - 2 * x2 - 2 * y2, 0,
@@ -453,7 +455,7 @@ glm::mat4 quat2mat4(glm::quat q) {
 }
 
 // calculate spline for 4 control points
-void quaternionOperations(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, bool), int segment) {
+GLvoid quaternionOperations(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLboolean), GLint segment) {
 
 	GLfloat* tempCtrlPos = positionArray + segment * 3;
 
@@ -463,7 +465,7 @@ void quaternionOperations(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLflo
 	GLfloat xi, yi, zi;
 	GLfloat angle;
 
-	for (float i = 0; i < 1; i += dt) {
+	for (GLfloat i = 0; i < 1; i += dt) {
 
 		// compute catmull-rom interpolation for position
 		glm::vec3 posTransform;
@@ -476,8 +478,8 @@ void quaternionOperations(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLflo
 
 		// calculate tangent along the spline to set facing direction
 		glm::quat quaternion = glm::normalize(quaternion);
-		float tanx = splineFunc(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i, true);
-		float tanz = splineFunc(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i, true);
+		GLfloat tanx = splineFunc(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i, true);
+		GLfloat tanz = splineFunc(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i, true);
 		angle = vector2angle(tanx, tanz);
 
 		// compute 4x4 transformation matrix 
@@ -496,8 +498,8 @@ void quaternionOperations(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLflo
 }
 
 // linear interpolation
-float lerp(float p0, float p1, float t) {
-	float MArray[4] = { -1, 1, 1, 0 };
+GLfloat lerp(GLfloat p0, GLfloat p1, GLfloat t) {
+	GLfloat MArray[4] = { -1, 1, 1, 0 };
 	glm::vec2 T(t, 1);
 	glm::mat2 M = glm::transpose(glm::make_mat2(MArray));
 	glm::vec2 P(p0, p1);
@@ -506,10 +508,10 @@ float lerp(float p0, float p1, float t) {
 }
 
 // define animation for legs wrt. torso
-void legMotion() {
+GLvoid legMotion() {
 
 	// control points for leg rotation
-	float legRotArray[9] = {
+	GLfloat legRotArray[9] = {
 		 135, 0, 0,
 		 225, 0, 0,
 	};
@@ -518,10 +520,10 @@ void legMotion() {
 	glm::vec3 posTransform = glm::vec3(0, 2.2, 0);
 	glm::mat2x3 controlPointsOri = glm::make_mat3x3(legRotArray);
 
-	float rolli, yawi, pitchi;
+	GLfloat rolli, yawi, pitchi;
 
 	// forward swing
-	for (float i = 0; i < 1; i += (dt * 6)) {
+	for (GLfloat i = 0; i < 1; i += (dt * 6)) {
 
 		// compute calmull-rom interpolation for orientation
 		rolli = lerp(controlPointsOri[0][0], controlPointsOri[1][0], i);
@@ -543,7 +545,7 @@ void legMotion() {
 	legAnimOffset = legAnim.size();
 
 	// backward swing
-	for (float i = 1; i > 0; i -= (dt * 6)) {
+	for (GLfloat i = 1; i > 0; i -= (dt * 6)) {
 
 		// compute calmull-rom interpolation for orientation
 		rolli = lerp(controlPointsOri[0][0], controlPointsOri[1][0], i);
