@@ -44,7 +44,7 @@ GLboolean firstMouse = true;
 GLfloat deltaTime = 0.0f;
 GLfloat lastFrame = 0.0f;
 
-// dt defaulted to 0.001
+// dt default
 GLfloat dt = 0.001;
 
 // frame index
@@ -86,11 +86,11 @@ GLvoid init(GLvoid) {
 	// calculate animation frames
 	legMotion();
 	if (splineMode == 1) {
-		for (size_t i = 0; i < 4; i++)
+		for (size_t i = 0; i < 5; i++)
 			quaternionOperations(catmullRom, i);
 	}
 	else if (splineMode == 2) {
-		for (size_t i = 0; i < 4; i++)
+		for (size_t i = 0; i < 5; i++)
 			quaternionOperations(bSpline, i);
 	}
 	else {
@@ -287,6 +287,10 @@ GLint main()
 
 	// glfw: terminate, clearing all previously allocated GLFW resources.
 	// ------------------------------------------------------------------
+	// unbind buffer
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	// unbind VAO
+	glBindVertexArray(0);
 	glfwTerminate();
 	return 0;
 }
