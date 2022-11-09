@@ -18,10 +18,12 @@ struct Light {
 
 in vec3 FragPos;  
 in vec3 Normal;  
+in vec2 TexCoords;
   
 uniform vec3 viewPos;
 uniform Material material;
 uniform Light light;
+uniform sampler2D texture_diffuse1;
 
 void main()
 {
@@ -41,5 +43,9 @@ void main()
     vec3 specular = light.specular * (spec * material.specular);  
         
     vec3 result = ambient + diffuse + specular;
-    FragColor = vec4(result, 1.0);
+    if (texture(texture_diffuse1, TexCoords) == vec4(vec3(0.0), 1.0)) {
+        FragColor = vec4(result, 1.0);
+    }
+    else FragColor = texture(texture_diffuse1, TexCoords) * vec4(result, 1.0);
+    
 } 

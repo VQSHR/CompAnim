@@ -149,7 +149,8 @@ GLint main()
 
 	// load models
 	// -----------
-	Model myModel("untitled.obj");
+	Model cylinder("models/cylinder.obj");
+	Model cube("models/cube.obj");
 
 	// vertices info for drawing the floor
 	GLfloat vertices[] = {
@@ -256,34 +257,34 @@ GLint main()
 		torsoModel = glm::scale(torsoMat, glm::vec3(0.5f, 0.2f, 0.5f));
 		torsoModel = glm::translate(torsoModel, glm::vec3(0, 10, 0));
 		modelShader.setMat4("model", torsoModel);
-		myModel.Draw(modelShader);
+		cylinder.Draw(modelShader);
 
 		// draw left leg
 		glm::mat4 legLModel = legLMat;
 		legLModel = glm::translate(legLModel, glm::vec3(.5, 0, 0));
 		legLModel = glm::scale(legLModel, glm::vec3(0.2f, 0.4f, 0.2f));
 		modelShader.setMat4("model", legLModel);
-		myModel.Draw(modelShader);
+		cylinder.Draw(modelShader);
 		// draw right leg
 		glm::mat4 legRModel = legRMat;
 		legRModel = glm::translate(legRModel, glm::vec3(-.5, 0, 0));
 		legRModel = glm::scale(legRModel, glm::vec3(0.2f, 0.4f, 0.2f));
 		modelShader.setMat4("model", legRModel);
-		myModel.Draw(modelShader);
+		cylinder.Draw(modelShader);
 
 		// draw floor
-		floorShader.use();
-		floorShader.setMat4("projection", projection);
-		floorShader.setMat4("view", view);
+		//floorShader.use();
+		//floorShader.setMat4("projection", projection);
+		//floorShader.setMat4("view", view);
 		glBindVertexArray(VAO);
 
 		glm::mat4 floorModel = glm::mat4(1.0);
-		floorShader.setMat4("model", floorModel);
+		modelShader.setMat4("model", floorModel);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		floorModel = glm::translate(floorModel, glm::vec3(-15,15,0));
 		floorModel = glm::rotate(floorModel, glm::pi<GLfloat>()/2.0f, glm::vec3(0, 0, 1));
-		floorShader.setMat4("model", floorModel);
+		modelShader.setMat4("model", floorModel);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 
