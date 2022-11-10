@@ -20,7 +20,12 @@
     <None Include="background.vs" />
     <None Include="model.fs" />
     <None Include="model.vs" />
-    <None Include="untitled.mtl" />
+    <None Include="models\cube.mtl">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="models\cylinder.mtl">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h">
@@ -60,6 +65,11 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Object Include="untitled.obj" />
+    <Object Include="models\cube.obj">
+      <Filter>Resource Files</Filter>
+    </Object>
+    <Object Include="models\cylinder.obj">
+      <Filter>Resource Files</Filter>
+    </Object>
   </ItemGroup>
 </Project>

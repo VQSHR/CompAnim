@@ -132,10 +132,9 @@
     <None Include="background.vs" />
     <None Include="model.fs" />
     <None Include="model.vs" />
+    <None Include="models\cube.mtl" />
+    <None Include="models\cylinder.mtl" />
     <None Include="packages.config" />
-    <None Include="untitled.mtl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
@@ -153,9 +152,8 @@
     <ClCompile Include="stb_image.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Object Include="untitled.obj">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </Object>
+    <Object Include="models\cube.obj" />
+    <Object Include="models\cylinder.obj" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
