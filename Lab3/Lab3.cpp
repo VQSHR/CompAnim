@@ -26,7 +26,7 @@ glm::quat euler2quat(glm::vec3 eularAngles);
 glm::mat4 quat2mat4(glm::quat q);
 
 GLfloat lerp(GLfloat p0, GLfloat p1, GLfloat t);
-GLvoid quaternionOperations(GLfloat(*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLboolean), GLint segment);
+GLvoid interpolateSegment(GLfloat(*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLboolean), GLint segment);
 GLvoid legMotion();
 
 // settings
@@ -87,11 +87,11 @@ GLvoid init(GLvoid) {
 	legMotion();
 	if (splineMode == 1) {
 		for (size_t i = 0; i < 5; i++)
-			quaternionOperations(catmullRom, i);
+			interpolateSegment(catmullRom, i);
 	}
 	else if (splineMode == 2) {
 		for (size_t i = 0; i < 5; i++)
-			quaternionOperations(bSpline, i);
+			interpolateSegment(bSpline, i);
 	}
 	else {
 		exit(1);
@@ -154,10 +154,11 @@ GLint main()
 
 	// vertices info for drawing the floor
 	GLfloat vertices[] = {
-		 15.0f, 0,  15.0f,  // top right
-		 15.0f, 0, -15.0f,  // bottom right
-		-15.0f, 0,  15.0f,  // bottom left
-		-15.0f, 0, -15.0f   // top left 
+	//	position		|	normals
+		 15.0f, 0,  15.0f,	0, 1, 0, // top right
+		 15.0f, 0, -15.0f,  0, 1, 0, // bottom right
+		-15.0f, 0,  15.0f,  0, 1, 0, // bottom left
+		-15.0f, 0, -15.0f,  0, 1, 0  // top left 
 	};
 	GLuint indices[] = {  
 		0, 1, 3,   // first triangle
@@ -178,8 +179,11 @@ GLint main()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 *sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
+
 	// unbind buffer
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	// unbind VAO
@@ -273,17 +277,22 @@ GLint main()
 		cylinder.Draw(modelShader);
 
 		// draw floor
-		//floorShader.use();
-		//floorShader.setMat4("projection", projection);
-		//floorShader.setMat4("view", view);
+		/*floorShader.use();
+		floorShader.setMat4("projection", projection);
+		floorShader.setMat4("view", view);*/
 		glBindVertexArray(VAO);
 
 		glm::mat4 floorModel = glm::mat4(1.0);
 		modelShader.setMat4("model", floorModel);
+
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		floorModel = glm::translate(floorModel, glm::vec3(-15,15,0));
 		floorModel = glm::rotate(floorModel, glm::pi<GLfloat>()/2.0f, glm::vec3(0, 0, 1));
+		modelShader.setMat4("model", floorModel);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		floorModel = glm::translate(floorModel, glm::vec3(0, -30, 0));
 		modelShader.setMat4("model", floorModel);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
@@ -468,7 +477,7 @@ glm::mat4 quat2mat4(glm::quat q) {
 }
 
 // calculate spline for 4 control points
-GLvoid quaternionOperations(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLboolean), GLint segment) {
+GLvoid interpolateSegment(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLboolean), GLint segment) {
 
 	GLfloat* tempCtrlPos = positionArray + segment * 3;
 
