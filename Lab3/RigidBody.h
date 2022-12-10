@@ -1,4 +1,4 @@
-#include "Model.h"
+
 
 #pragma once
 #include <glad/glad.h>
@@ -13,76 +13,42 @@ enum ShapeType {
 	sphere = 1
 };
 
-glm::vec3 ZERO_VEC = glm::vec3(0.0);
-
 class RigidBody
 {
-private: 
+public: 
 	glm::vec3 position;
 	glm::vec3 linearVelocity;
 	glm::vec3 rotation;
 	glm::vec3 rotationVelocity;
-public:
-	GLfloat scale;
+
 	GLfloat mass;
-	GLfloat volume;
-	GLfloat density;
 	GLfloat restitution;
 	GLfloat friction;
-	ShapeType shapeType;
 	
 
-	RigidBody(	
+	RigidBody(
 		glm::vec3 position,
 		glm::vec3 linearVelocity,
 		glm::vec3 rotation,
 		glm::vec3 rotationVelocity,
-		GLfloat scale,
 		GLfloat mass,
-		GLfloat volume,
-		GLfloat density,
 		GLfloat restitution,
-		GLfloat friction,
-		ShapeType shapeType) 
-	{
-		this->position = position;
-		this->linearVelocity = ZERO_VEC;
-		this->rotation = rotation;
-		this->rotationVelocity = ZERO_VEC;
-		this->scale = scale;
-		this->mass = mass;
-		this->volume = volume;
-		this->density = density;
-		this->restitution = restitution;
-		this->friction = friction;
-		this->shapeType = shapeType;
-	} 
+		GLfloat friction);
 
 	void move();
-	bool createCube(
-		glm::vec3 position,
-		glm::vec3 linearVelocity,
-		glm::vec3 rotation,
-		glm::vec3 rotationVelocity,
-		GLfloat scale,
-		GLfloat mass,
-		GLfloat volume,
-		GLfloat density,
-		GLfloat restitution,
-		GLfloat friction);
-	bool createSphere(
-		glm::vec3 position,
-		glm::vec3 linearVelocity,
-		glm::vec3 rotation,
-		glm::vec3 rotationVelocity,
-		GLfloat scale,
-		GLfloat mass,
-		GLfloat volume,
-		GLfloat density,
-		GLfloat restitution,
-		GLfloat friction);
-
-	
 
 };
 
+class Sphere : public RigidBody {
+public:
+	GLfloat radius;
+	Sphere(glm::vec3 position,
+		glm::vec3 linearVelocity,
+		glm::vec3 rotation,
+		glm::vec3 rotationVelocity,
+		GLfloat mass,
+		GLfloat restitution,
+		GLfloat friction,
+		GLfloat radius);
+	bool static intersect(Sphere a, Sphere b, glm::vec3& normal, GLfloat& depth);
+};

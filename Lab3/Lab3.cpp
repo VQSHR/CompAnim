@@ -69,7 +69,7 @@ GLfloat positionArray[24] = { // positions
 };
 
 // lighting
-glm::vec3 lightPos(0.0f, 10.0f, 10.0f);
+glm::vec3 lightPos(0.0f, 30.0f, 0.0f);
 
 
 //================================
@@ -77,26 +77,10 @@ glm::vec3 lightPos(0.0f, 10.0f, 10.0f);
 //================================
 GLvoid init(GLvoid) {
 
-	GLint splineMode = 1;
-	std::cout << "Select interpolation mode: \n 1: Catmull-Rom \n 2: B-Spline" << "\n";
-	std::cin >> splineMode;
-	/*   std::cout << "Enter dt:" << "\n";
-	   std::cin >> dt;*/
-
 	// calculate animation frames
 	legMotion();
-	if (splineMode == 1) {
-		for (size_t i = 0; i < 5; i++)
-			interpolateSegment(catmullRom, i);
-	}
-	else if (splineMode == 2) {
-		for (size_t i = 0; i < 5; i++)
-			interpolateSegment(bSpline, i);
-	}
-	else {
-		exit(1);
-	}
-
+	for (size_t i = 0; i < 5; i++)
+		interpolateSegment(catmullRom, i);
 
 }
 
@@ -226,11 +210,11 @@ GLint main()
 		glm::vec3 ambientColor = diffuseColor * glm::vec3(0.1f);
 		modelShader.setVec3("light.ambient", ambientColor);
 		modelShader.setVec3("light.diffuse", diffuseColor);
-		modelShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
+		modelShader.setVec3("light.specular", 1, 1, 1);
 
 		// material properties
 		modelShader.setVec3("material.ambient", 1.0f, 1.0f, 1.0f);
-		modelShader.setVec3("material.diffuse", 0.3f, 0.3f, 0.7f);
+		modelShader.setVec3("material.diffuse", 0.7f, 0.3f, 0.0f);
 		modelShader.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
 		modelShader.setFloat("material.shininess", 2.0f);
 
@@ -276,26 +260,34 @@ GLint main()
 		modelShader.setMat4("model", legRModel);
 		cylinder.Draw(modelShader);
 
-		// draw floor
-		/*floorShader.use();
-		floorShader.setMat4("projection", projection);
-		floorShader.setMat4("view", view);*/
+		// draw box
 		glBindVertexArray(VAO);
+		modelShader.setVec3("material.ambient", 1.0f, 1.0f, 1.0f);
+		modelShader.setVec3("material.diffuse", 1.0f, 1.0f, 1.0f);
+		modelShader.setVec3("material.specular", 0.0f, 0.0f, 0.0f);
+		modelShader.setFloat("material.shininess", 32);
 
+		// draw floor
 		glm::mat4 floorModel = glm::mat4(1.0);
 		modelShader.setMat4("model", floorModel);
-
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-		floorModel = glm::translate(floorModel, glm::vec3(-15,15,0));
-		floorModel = glm::rotate(floorModel, glm::pi<GLfloat>()/2.0f, glm::vec3(0, 0, 1));
-		modelShader.setMat4("model", floorModel);
+		// draw wall
+		glm::mat4 wallModel;
+		wallModel = glm::translate(floorModel, glm::vec3(-15, 15, 0));
+		wallModel = glm::rotate(wallModel, -glm::pi<GLfloat>()/2.0f, glm::vec3(0, 0, 1));
+		modelShader.setMat4("model", wallModel);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-		floorModel = glm::translate(floorModel, glm::vec3(0, -30, 0));
-		modelShader.setMat4("model", floorModel);
+		wallModel = glm::translate(floorModel, glm::vec3(15, 15, 0));
+		wallModel = glm::rotate(wallModel, glm::pi<GLfloat>() / 2.0f, glm::vec3(0, 0, 1));
+		modelShader.setMat4("model", wallModel);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+		wallModel = glm::translate(floorModel, glm::vec3(0, 15, -15));
+		wallModel = glm::rotate(wallModel, glm::pi<GLfloat>() / 2.0f, glm::vec3(1, 0, 0));
+		modelShader.setMat4("model", wallModel);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
