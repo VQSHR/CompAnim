@@ -26,6 +26,9 @@
     <None Include="models\cylinder.mtl">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="models\sphere.mtl">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h">
@@ -49,6 +52,9 @@
     <ClInclude Include="RigidBody.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MyMath.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Lab3.cpp">
@@ -69,6 +75,9 @@
       <Filter>Resource Files</Filter>
     </Object>
     <Object Include="models\cylinder.obj">
+      <Filter>Resource Files</Filter>
+    </Object>
+    <Object Include="models\sphere.obj">
       <Filter>Resource Files</Filter>
     </Object>
   </ItemGroup>

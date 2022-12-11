@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/random.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/constants.hpp>
@@ -9,32 +10,25 @@
 #include "Shader.h"
 #include "Camera.h"
 #include "Model.h"
+#include "RigidBody.h"
+#include "MyMath.h"
 
 #include <iostream>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
+
 
 GLvoid framebuffer_size_callback(GLFWwindow* window, GLint width, GLint height);
 GLvoid mouse_callback(GLFWwindow* window, GLdouble xpos, GLdouble ypos);
 GLvoid scroll_callback(GLFWwindow* window, GLdouble xoffset, GLdouble yoffset);
 GLvoid processInput(GLFWwindow* window);
 
-GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, GLboolean tan);
-GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, GLboolean tan);
-GLfloat vector2angle(GLfloat y, GLfloat x);
-glm::quat euler2quat(glm::vec3 eularAngles);
-glm::mat4 quat2mat4(glm::quat q);
-
-GLfloat lerp(GLfloat p0, GLfloat p1, GLfloat t);
-GLvoid interpolateSegment(GLfloat(*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLboolean), GLint segment);
-GLvoid legMotion();
-
 // settings
 const GLuint SCR_WIDTH = 800;
 const GLuint SCR_HEIGHT = 600;
 
 // camera
-Camera camera(glm::vec3(0.0f, 20.0f, 30.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -40.0f);
+Camera camera(glm::vec3(0.0f, 45.0f, 45.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -35.0f);
 
 GLfloat lastX = SCR_WIDTH / 2.0f;
 GLfloat lastY = SCR_HEIGHT / 2.0f;
@@ -44,43 +38,38 @@ GLboolean firstMouse = true;
 GLfloat deltaTime = 0.0f;
 GLfloat lastFrame = 0.0f;
 
-// dt default
-GLfloat dt = 0.001;
-
 // frame index
 GLint frameCount = 0;
-GLint animFrameCount = -1;
 
-// vector of Transformation Matrices for each frame of interpolation
-std::vector<glm::mat4> torsoAnim; // torso
-std::vector<glm::mat4> legAnim; // leg
-size_t legAnimOffset = 0;
-
-// control points 
-GLfloat positionArray[24] = { // positions
-	-9.0,  0, -9,
-	-9.0,  0,  9,
-	 9.0,  0, -9,
-	 9.0,  0,  9,
-	-9.0,  0, -9,
-	-9.0,  0,  9,
-	 9.0,  0, -9,
-	 9.0,  0,  9
-};
+// object list
+std::vector<Sphere> sphereList;
+std::vector<glm::vec3> colorList;
 
 // lighting
 glm::vec3 lightPos(0.0f, 30.0f, 0.0f);
 
+GLvoid drawBox(GLuint VAO, Shader modelShader);
+GLvoid resolveCollision(Sphere& a, Sphere& b, glm::vec3 normal);
 
 //================================
 // init
 //================================
 GLvoid init(GLvoid) {
-
-	// calculate animation frames
-	legMotion();
-	for (size_t i = 0; i < 5; i++)
-		interpolateSegment(catmullRom, i);
+	sphereList.clear();
+	const glm::vec3 ZERO_VEC = glm::vec3(0);
+	// create 10 random spheres
+	for (size_t i = 0; i < 10; i++) {
+		// generate random parameters
+		glm::vec3 random_position = glm::linearRand(glm::vec3(-10, 5, -10), glm::vec3(10, 25, 10));
+		glm::vec3 random_linearVelocity = glm::linearRand(glm::vec3(-10, -10, -10), glm::vec3(10, 10, 10));
+		GLfloat random_radius = glm::linearRand(2.0f, 3.0f);
+		GLfloat random_mass = glm::linearRand(20, 30);
+		// push back into list
+		sphereList.push_back(Sphere(random_position, random_linearVelocity, ZERO_VEC, ZERO_VEC, ZERO_VEC, random_mass, 0.8, 0, random_radius));
+		// random colors for each sphere
+		glm::vec3 random_color = glm::linearRand(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+		colorList.push_back(random_color);
+	}
 
 }
 
@@ -135,6 +124,7 @@ GLint main()
 	// -----------
 	Model cylinder("models/cylinder.obj");
 	Model cube("models/cube.obj");
+	Model sphere("models/sphere.obj");
 
 	// vertices info for drawing the floor
 	GLfloat vertices[] = {
@@ -210,7 +200,7 @@ GLint main()
 		glm::vec3 ambientColor = diffuseColor * glm::vec3(0.1f);
 		modelShader.setVec3("light.ambient", ambientColor);
 		modelShader.setVec3("light.diffuse", diffuseColor);
-		modelShader.setVec3("light.specular", 1, 1, 1);
+		modelShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
 
 		// material properties
 		modelShader.setVec3("material.ambient", 1.0f, 1.0f, 1.0f);
@@ -224,70 +214,56 @@ GLint main()
 		modelShader.setMat4("projection", projection);
 		modelShader.setMat4("view", view);
 
+		// draw spheres
+		for (int i = 0; i < sphereList.size(); i++) {
+			Sphere* s = &sphereList[i];
 
-		// update the transformation matrix for each frame
-		glm::mat4 torsoMat, legLMat, legRMat;
-		if (animFrameCount >= 0 && animFrameCount < torsoAnim.size()) {
-			torsoMat = torsoAnim[animFrameCount];
-			legLMat = torsoMat * legAnim[animFrameCount % legAnim.size()];
-			legRMat = torsoMat * legAnim[(animFrameCount + legAnimOffset) % legAnim.size()];
-			animFrameCount++;
+			// draw according to Sphere properties
+			glm::vec3 posVec = s->position;
+			GLfloat radius = s->radius;
+			glm::mat4 model;
+			model = MyUtil::translate(glm::mat4(1.0), posVec);
+			model = MyUtil::scale(model, glm::vec3(radius));
+			modelShader.setMat4("model", model);
+			modelShader.setVec3("material.diffuse", colorList[i]);
+			sphere.Draw(modelShader);
+
+			// normal and depth for boundary collisions
+			glm::vec3 normal;
+			glm::vec3 depth;
+
+			// check for collision on boundaries
+			if (s->intersectBound(normal, depth)) {
+				// move out of overlap
+				s->move(-normal * depth);
+				// resolve collision
+				s->linearVelocity += - (1 + s->restitution) * glm::dot(s->linearVelocity, normal) * (normal) / glm::dot(normal, normal);
+			}
+			// update new state for sphere: move according to velocity and deltaTime
+			s->update(deltaTime);
 		}
-		else {
-			GLint lastframe = torsoAnim.size() - 1;
-			torsoMat = torsoAnim[lastframe];
-			legLMat = torsoMat * legAnim[lastframe % legAnim.size()];
-			legRMat = torsoMat * legAnim[(lastframe + legAnimOffset) % legAnim.size()];
+
+		// move spheres out of intersection
+		for (int i = 0; i < sphereList.size() - 1; i++) {
+			Sphere* a = &sphereList[i];
+			for (int j = i + 1; j < sphereList.size(); j++) {
+				Sphere* b = &sphereList[j];
+				glm::vec3 normal;
+				GLfloat depth;
+
+				// detect collision between spheres
+				if (Sphere::intersect(*a, *b, normal, depth)) {
+					// move out of ovelap
+					a->move(normal * depth * 0.5f);
+					b->move(-normal * depth * 0.5f);
+					// resolve collision
+					resolveCollision(*a, *b, normal);
+				}
+				
+			}
 		}
-
-		// draw the torso
-		glm::mat4 torsoModel;
-		torsoModel = glm::scale(torsoMat, glm::vec3(0.5f, 0.2f, 0.5f));
-		torsoModel = glm::translate(torsoModel, glm::vec3(0, 10, 0));
-		modelShader.setMat4("model", torsoModel);
-		cylinder.Draw(modelShader);
-
-		// draw left leg
-		glm::mat4 legLModel = legLMat;
-		legLModel = glm::translate(legLModel, glm::vec3(.5, 0, 0));
-		legLModel = glm::scale(legLModel, glm::vec3(0.2f, 0.4f, 0.2f));
-		modelShader.setMat4("model", legLModel);
-		cylinder.Draw(modelShader);
-		// draw right leg
-		glm::mat4 legRModel = legRMat;
-		legRModel = glm::translate(legRModel, glm::vec3(-.5, 0, 0));
-		legRModel = glm::scale(legRModel, glm::vec3(0.2f, 0.4f, 0.2f));
-		modelShader.setMat4("model", legRModel);
-		cylinder.Draw(modelShader);
-
-		// draw box
-		glBindVertexArray(VAO);
-		modelShader.setVec3("material.ambient", 1.0f, 1.0f, 1.0f);
-		modelShader.setVec3("material.diffuse", 1.0f, 1.0f, 1.0f);
-		modelShader.setVec3("material.specular", 0.0f, 0.0f, 0.0f);
-		modelShader.setFloat("material.shininess", 32);
-
-		// draw floor
-		glm::mat4 floorModel = glm::mat4(1.0);
-		modelShader.setMat4("model", floorModel);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-		// draw wall
-		glm::mat4 wallModel;
-		wallModel = glm::translate(floorModel, glm::vec3(-15, 15, 0));
-		wallModel = glm::rotate(wallModel, -glm::pi<GLfloat>()/2.0f, glm::vec3(0, 0, 1));
-		modelShader.setMat4("model", wallModel);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-		wallModel = glm::translate(floorModel, glm::vec3(15, 15, 0));
-		wallModel = glm::rotate(wallModel, glm::pi<GLfloat>() / 2.0f, glm::vec3(0, 0, 1));
-		modelShader.setMat4("model", wallModel);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-		wallModel = glm::translate(floorModel, glm::vec3(0, 15, -15));
-		wallModel = glm::rotate(wallModel, glm::pi<GLfloat>() / 2.0f, glm::vec3(1, 0, 0));
-		modelShader.setMat4("model", wallModel);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		// draw physics simulation bounding box
+		drawBox(VAO, modelShader);
 
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
@@ -321,9 +297,9 @@ GLvoid processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
 
-	// press SPACE to start animation
-	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-		animFrameCount = 0;
+	// press SPACE to start simulation
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) 
+		init();
 
 }
 
@@ -366,214 +342,50 @@ GLvoid scroll_callback(GLFWwindow* window, GLdouble xoffset, GLdouble yoffset)
 	camera.ProcessMouseScroll(static_cast<GLfloat>(yoffset));
 }
 
-
-GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, GLboolean tan=false) {
-	GLfloat MArray[16] = {
-		-0.5,  1.5, -1.5,  0.5,
-		 1.0, -2.5,  2.0, -0.5,
-		-0.5,  0.0,  0.5,  0.0,
-		 0.0,  1.0,  0.0,  0.0
-	};
-	glm::vec4 T;
-	if (!tan) {
-		GLdouble t2 = t * t;
-		GLdouble t3 = t2 * t;
-		T = glm::vec4(t3, t2, t, 1);
-	}
-	else {
-		T = glm::vec4(3 * t * t, 2 * t, 1, 0);
-	}
+GLvoid drawBox(GLuint VAO, Shader modelShader) {
 	
-	glm::mat4 M = glm::transpose(glm::make_mat4(MArray));
-	glm::vec4 P(p0, p1, p2, p3);
-	GLfloat result = glm::dot(T * M, P);
-	return result;
+	glBindVertexArray(VAO);
+	modelShader.setVec3("material.ambient", 1.0f, 1.0f, 1.0f);
+	modelShader.setVec3("material.diffuse", 1.0f, 1.0f, 1.0f);
+	modelShader.setVec3("material.specular", 0.0f, 0.0f, 0.0f);
+	modelShader.setFloat("material.shininess", 32);
+
+	// draw floor
+	glm::mat4 floorModel = glm::mat4(1.0);
+	modelShader.setMat4("model", floorModel);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	// draw wall
+	glm::mat4 wallModel;
+	wallModel = MyUtil::translate(floorModel, glm::vec3(-15, 15, 0));
+	wallModel = glm::rotate(wallModel, -glm::pi<GLfloat>() / 2.0f, glm::vec3(0, 0, 1));
+	modelShader.setMat4("model", wallModel);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	wallModel = MyUtil::translate(floorModel, glm::vec3(15, 15, 0));
+	wallModel = glm::rotate(wallModel, glm::pi<GLfloat>() / 2.0f, glm::vec3(0, 0, 1));
+	modelShader.setMat4("model", wallModel);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	wallModel = MyUtil::translate(floorModel, glm::vec3(0, 15, -15));
+	wallModel = glm::rotate(wallModel, glm::pi<GLfloat>() / 2.0f, glm::vec3(1, 0, 0));
+	modelShader.setMat4("model", wallModel);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
-GLfloat bSpline(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, GLboolean tan=false) {
-	GLfloat MArray[16] = {
-		-1 / 6.0,  3 / 6.0, -3 / 6.0, 1 / 6.0,
-		 3 / 6.0, -6 / 6.0,  3 / 6.0,       0,
-		-3 / 6.0,        0,  3 / 6.0,       0,
-		 1 / 6.0,  4 / 6.0,  1 / 6.0,       0
-	};
-	glm::vec4 T;
-	if (!tan) {
-		GLdouble t2 = t * t;
-		GLdouble t3 = t2 * t;
-		T = glm::vec4(t3, t2, t, 1);
-	}
-	else {
-		T = glm::vec4(3 * t * t, 2 * t, 1, 0);
-	}
-	glm::mat4 M = glm::transpose(glm::make_mat4(MArray));
-	glm::vec4 P(p0, p1, p2, p3);
-
-	GLfloat result = glm::dot(T * M, P);
-	return result;
-}
-
-GLfloat vector2angle(GLfloat z, GLfloat x)
+GLvoid resolveCollision(Sphere& a, Sphere& b, glm::vec3 normal)
 {
-	return glm::atan(z, x);
-}
-
-glm::quat quatMul(glm::quat q1, glm::quat q2) {
-	glm::quat q;
-	GLfloat w1 = q1.w;
-	GLfloat w2 = q2.w;
-	glm::vec3 v1(q1.x, q1.y, q1.z);
-	glm::vec3 v2(q2.x, q2.y, q2.z);
-
-	q.w = w1 * w2 - glm::dot(v1, v2);
-	glm::vec3 v = w1 * v2 + w2 * v1 + glm::cross(v1, v2);
-	q.x = v.x;
-	q.y = v.y;
-	q.z = v.z;
-	return q;
-}
-
-glm::quat euler2quat(glm::vec3 eulerAngles)
-{
-	GLfloat x = eulerAngles.x * 0.5;
-	GLfloat y = eulerAngles.y * 0.5;
-	GLfloat z = eulerAngles.z * 0.5;
-
-	glm::quat qz, qy, qx;
-	qz = glm::quat(glm::cos(z), 0, 0, glm::sin(z));
-	qy = glm::quat(glm::cos(y), 0, glm::sin(y), 0);
-	qx = glm::quat(glm::cos(x), glm::sin(x), 0, 0);
-
-	glm::quat q = quatMul(quatMul(qz, qy), qx);
-	return q;
-}
-
-glm::mat4 quat2mat4(glm::quat q) {
-	GLfloat w = q.w;
-	GLfloat x = q.x;
-	GLfloat y = q.y;
-	GLfloat z = q.z;
-
-	GLfloat x2 = x * x;
-	GLfloat y2 = y * y;
-	GLfloat z2 = z * z;
-
-	GLfloat mat4array[16] = {
-		1 - 2 * y2 - 2 * z2,   2 * x * y - 2 * w * z,   2 * x * z + 2 * w * y, 0,
-		  2 * x * y + 2 * w * z, 1 - 2 * x2 - 2 * z2,   2 * y * z - 2 * w * x, 0,
-		  2 * x * z - 2 * w * y,   2 * y * z + 2 * w * x, 1 - 2 * x2 - 2 * y2, 0,
-					  0,               0,               0, 1
-	};
-
-	return glm::transpose(glm::make_mat4(mat4array));
-}
-
-// calculate spline for 4 control points
-GLvoid interpolateSegment(GLfloat (*splineFunc)(GLfloat, GLfloat, GLfloat, GLfloat, GLfloat, GLboolean), GLint segment) {
-
-	GLfloat* tempCtrlPos = positionArray + segment * 3;
-
-	glm::mat4x3 controlPointsPos = glm::make_mat4x3(tempCtrlPos);
-
-	// intermediate variables
-	GLfloat xi, yi, zi;
-	GLfloat angle;
-
-	for (GLfloat i = 0; i < 1; i += dt) {
-
-		// compute catmull-rom interpolation for position
-		glm::vec3 posTransform;
-		xi = splineFunc(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i, false);
-		yi = splineFunc(controlPointsPos[0][1], controlPointsPos[1][1], controlPointsPos[2][1], controlPointsPos[3][1], i, false);
-		zi = splineFunc(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i, false);
-		posTransform.x = xi;
-		posTransform.y = yi;
-		posTransform.z = zi;
-
-		// calculate tangent along the spline to set facing direction
-		glm::quat quaternion = glm::normalize(quaternion);
-		GLfloat tanx = splineFunc(controlPointsPos[0][0], controlPointsPos[1][0], controlPointsPos[2][0], controlPointsPos[3][0], i, true);
-		GLfloat tanz = splineFunc(controlPointsPos[0][2], controlPointsPos[1][2], controlPointsPos[2][2], controlPointsPos[3][2], i, true);
-		angle = vector2angle(tanx, tanz);
-
-		// compute 4x4 transformation matrix 
-		glm::mat4 transformMatrix(1.0f);
-		// translation 
-		transformMatrix = glm::translate(transformMatrix, posTransform);
-		// rotation
-		quaternion = euler2quat(glm::vec3(0, angle, 0));
-		glm::mat4 rotationMatrix = quat2mat4(quaternion);
-		transformMatrix = transformMatrix * rotationMatrix;
-
-		// push result into vector for return
-		torsoAnim.push_back(transformMatrix);
-	}
-
-}
-
-// linear interpolation
-GLfloat lerp(GLfloat p0, GLfloat p1, GLfloat t) {
-	GLfloat MArray[4] = { -1, 1, 1, 0 };
-	glm::vec2 T(t, 1);
-	glm::mat2 M = glm::transpose(glm::make_mat2(MArray));
-	glm::vec2 P(p0, p1);
-	GLfloat result = glm::dot(T * M, P);
-	return result;
-}
-
-// define animation for legs wrt. torso
-GLvoid legMotion() {
-
-	// control points for leg rotation
-	GLfloat legRotArray[9] = {
-		 135, 0, 0,
-		 225, 0, 0,
-	};
-
-	// fix the position wrt. torso
-	glm::vec3 posTransform = glm::vec3(0, 2.2, 0);
-	glm::mat2x3 controlPointsOri = glm::make_mat3x3(legRotArray);
-
-	GLfloat rolli, yawi, pitchi;
-
-	// forward swing
-	for (GLfloat i = 0; i < 1; i += (dt * 6)) {
-
-		// compute calmull-rom interpolation for orientation
-		rolli = lerp(controlPointsOri[0][0], controlPointsOri[1][0], i);
-		yawi = lerp(controlPointsOri[0][1], controlPointsOri[1][1], i);
-		pitchi = lerp(controlPointsOri[0][2], controlPointsOri[1][2], i);
-
-		// compute 4x4 transformation matrix 
-		glm::mat4 transformMatrix(1.0f); // identity matrix 
-		transformMatrix = glm::translate(transformMatrix, posTransform);
-		transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
-		transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
-		transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(0, 0, 1));
-
-		// push result into vector for return
-		legAnim.push_back(transformMatrix);
-	}
-
-	// record the mid-point for leg animation to offset right leg animation on left leg animation
-	legAnimOffset = legAnim.size();
-
-	// backward swing
-	for (GLfloat i = 1; i > 0; i -= (dt * 6)) {
-
-		// compute calmull-rom interpolation for orientation
-		rolli = lerp(controlPointsOri[0][0], controlPointsOri[1][0], i);
-		yawi = lerp(controlPointsOri[0][1], controlPointsOri[1][1], i);
-		pitchi = lerp(controlPointsOri[0][2], controlPointsOri[1][2], i);
-
-		// compute 4x4 transformation matrix 
-		glm::mat4 transformMatrix(1.0f); // identity matrix 
-		transformMatrix = glm::translate(transformMatrix, posTransform);
-		transformMatrix = glm::rotate(transformMatrix, glm::radians(yawi), glm::vec3(0, 1, 0));
-		transformMatrix = glm::rotate(transformMatrix, glm::radians(rolli), glm::vec3(1, 0, 0));
-		transformMatrix = glm::rotate(transformMatrix, glm::radians(pitchi), glm::vec3(0, 0, 1));
-
-		// push result into vector for return
-		legAnim.push_back(transformMatrix);
-	}
+	// v1' = v1 + j * normal / mass1
+	// v2' = v2 - j * normal / mass2
+	// where:
+	//		- (1 + restitution) * dot((v1 - v2), n)
+	// j = ------------------------------------------
+	//		 dot(n, n) * ((1 / mass1) + (1/ mass2))
+	GLfloat eps = glm::min(a.restitution, b.restitution);
+	glm::vec3 relativeVelocity = a.linearVelocity - b.linearVelocity;
+	GLfloat j = - (1 + eps) * glm::dot(relativeVelocity, normal);
+	j /= (1.0f / a.mass) + (1.0f / b.mass);
+	a.linearVelocity += j * normal / a.mass;
+	b.linearVelocity -= j * normal / b.mass;
+	
 }
