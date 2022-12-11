@@ -175,7 +175,6 @@ GLint main()
 		GLfloat currentFrame = static_cast<GLfloat>(glfwGetTime());
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		//std::cout << deltaTime;
 
 		// input
 		// -----
