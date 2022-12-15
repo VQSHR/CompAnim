@@ -10,12 +10,12 @@
 #include "Shader.h"
 #include "Camera.h"
 #include "Model.h"
-#include "RigidBody.h"
-#include "MyMath.h"
+#include "MyUtil.h"
 
 #include <iostream>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
+#include "Flock.h"
 
 
 GLvoid framebuffer_size_callback(GLFWwindow* window, GLint width, GLint height);
@@ -28,7 +28,7 @@ const GLuint SCR_WIDTH = 800;
 const GLuint SCR_HEIGHT = 600;
 
 // camera
-Camera camera(glm::vec3(0.0f, 45.0f, 45.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -35.0f);
+Camera camera(glm::vec3(0.0f, 80.0f, 80.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -35.0f);
 
 GLfloat lastX = SCR_WIDTH / 2.0f;
 GLfloat lastY = SCR_HEIGHT / 2.0f;
@@ -42,35 +42,22 @@ GLfloat lastFrame = 0.0f;
 GLint frameCount = 0;
 
 // object list
-std::vector<Sphere> sphereList;
-std::vector<glm::vec3> colorList;
+Flock flock;
 
 // lighting
-glm::vec3 lightPos(0.0f, 30.0f, 0.0f);
+glm::vec3 lightPos(0.0f, 80.0f, 70.0f);
 
-GLvoid drawBox(GLuint VAO, Shader modelShader);
-GLvoid resolveCollision(Sphere& a, Sphere& b, glm::vec3 normal);
+GLvoid drawBox(GLuint VAO, Shader modelShader, GLfloat width);
+
 
 //================================
 // init
 //================================
 GLvoid init(GLvoid) {
-	sphereList.clear();
-	const glm::vec3 ZERO_VEC = glm::vec3(0);
-	// create 10 random spheres
-	for (size_t i = 0; i < 10; i++) {
-		// generate random parameters
-		glm::vec3 random_position = glm::linearRand(glm::vec3(-10, 5, -10), glm::vec3(10, 25, 10));
-		glm::vec3 random_linearVelocity = glm::linearRand(glm::vec3(-10, -10, -10), glm::vec3(10, 10, 10));
-		GLfloat random_radius = glm::linearRand(2.0f, 3.0f);
-		GLfloat random_mass = glm::linearRand(20, 30);
-		// push back into list
-		sphereList.push_back(Sphere(random_position, random_linearVelocity, ZERO_VEC, ZERO_VEC, ZERO_VEC, random_mass, 0.8, 0, random_radius));
-		// random colors for each sphere
-		glm::vec3 random_color = glm::linearRand(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-		colorList.push_back(random_color);
-	}
-
+	GLfloat cohesionRadius = 15;
+	GLfloat avoidanceRadius = 5;
+	GLfloat flockSize = 100;
+	flock = Flock(avoidanceRadius, cohesionRadius, flockSize);
 }
 
 GLint main()
@@ -85,7 +72,7 @@ GLint main()
 
 	// glfw window creation
 	// --------------------
-	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Lab2", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Lab4", NULL, NULL);
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -118,21 +105,23 @@ GLint main()
 	// build and compile shaders
 	// -------------------------
 	Shader modelShader("model.vs", "model.fs");
-	Shader floorShader("background.vs", "background.fs");
+	//Shader floorShader("background.vs", "background.fs");
 
 	// load models
 	// -----------
-	Model cylinder("models/cylinder.obj");
+	/*Model cylinder("models/cylinder.obj");
 	Model cube("models/cube.obj");
-	Model sphere("models/sphere.obj");
+	Model sphere("models/sphere.obj");*/
+	Model cone("models/cone.obj");
 
 	// vertices info for drawing the floor
+	GLfloat width = 30.0f;
 	GLfloat vertices[] = {
 	//	position		|	normals
-		 15.0f, 0,  15.0f,	0, 1, 0, // top right
-		 15.0f, 0, -15.0f,  0, 1, 0, // bottom right
-		-15.0f, 0,  15.0f,  0, 1, 0, // bottom left
-		-15.0f, 0, -15.0f,  0, 1, 0  // top left 
+		 width, 0,  width,	0, 1, 0, // top right
+		 width, 0, -width,  0, 1, 0, // bottom right
+		-width, 0,  width,  0, 1, 0, // bottom left
+		-width, 0, -width,  0, 1, 0  // top left 
 	};
 	GLuint indices[] = {  
 		0, 1, 3,   // first triangle
@@ -203,66 +192,39 @@ GLint main()
 
 		// material properties
 		modelShader.setVec3("material.ambient", 1.0f, 1.0f, 1.0f);
-		modelShader.setVec3("material.diffuse", 0.7f, 0.3f, 0.0f);
+		modelShader.setVec3("material.diffuse", 0.7f, 0.3f, 0.1f);
 		modelShader.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
 		modelShader.setFloat("material.shininess", 2.0f);
 
 		// view/projection transformations
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT, 0.1f, 100.0f);
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT, 0.1f, 500.0f);
 		glm::mat4 view = camera.GetViewMatrix();
 		modelShader.setMat4("projection", projection);
 		modelShader.setMat4("view", view);
 
-		// draw spheres
-		for (int i = 0; i < sphereList.size(); i++) {
-			Sphere* s = &sphereList[i];
+		// update neighbors for each agent
+		flock.findNeighbors();
+		for (int i = 0; i < flock.size(); i++) {
+			FlockAgent* agent = &flock.list[i];
 
-			// draw according to Sphere properties
-			glm::vec3 posVec = s->position;
-			GLfloat radius = s->radius;
+			// resolve all behaviors and update state of agent
+			agent->doAlignment();
+			agent->doCohesion();
+			agent->doAvoidance();
+			agent->update(deltaTime);
+
+			// set model matrix
 			glm::mat4 model;
-			model = MyUtil::translate(glm::mat4(1.0), posVec);
-			model = MyUtil::scale(model, glm::vec3(radius));
+			model = MyUtil::translate(glm::mat4(1.0f), agent->position);
+			model = model * MyUtil::quat2mat4(agent->rotation);
 			modelShader.setMat4("model", model);
-			modelShader.setVec3("material.diffuse", colorList[i]);
-			sphere.Draw(modelShader);
-
-			// normal and depth for boundary collisions
-			glm::vec3 normal;
-			glm::vec3 depth;
-
-			// check for collision on boundaries
-			if (s->intersectBound(normal, depth)) {
-				// move out of overlap
-				s->move(-normal * depth);
-				// resolve collision
-				s->linearVelocity += - (1 + s->restitution) * glm::dot(s->linearVelocity, normal) * (normal) / glm::dot(normal, normal);
-			}
-			// update new state for sphere: move according to velocity and deltaTime
-			s->update(deltaTime);
+			
+			// draw
+			cone.Draw(modelShader);
 		}
 
-		// move spheres out of intersection
-		for (int i = 0; i < sphereList.size() - 1; i++) {
-			Sphere* a = &sphereList[i];
-			for (int j = i + 1; j < sphereList.size(); j++) {
-				Sphere* b = &sphereList[j];
-				glm::vec3 normal;
-				GLfloat depth;
-
-				// detect collision between spheres
-				if (Sphere::intersect(*a, *b, normal, depth)) {
-					// move out of ovelap
-					a->move(normal * depth * 0.5f);
-					b->move(-normal * depth * 0.5f);
-					// resolve collision
-					resolveCollision(*a, *b, normal);
-				}
-				
-			}
-		}
 		// draw physics simulation bounding box
-		drawBox(VAO, modelShader);
+		drawBox(VAO, modelShader, width);
 
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
@@ -341,7 +303,7 @@ GLvoid scroll_callback(GLFWwindow* window, GLdouble xoffset, GLdouble yoffset)
 	camera.ProcessMouseScroll(static_cast<GLfloat>(yoffset));
 }
 
-GLvoid drawBox(GLuint VAO, Shader modelShader) {
+GLvoid drawBox(GLuint VAO, Shader modelShader, GLfloat width) {
 	
 	glBindVertexArray(VAO);
 	modelShader.setVec3("material.ambient", 1.0f, 1.0f, 1.0f);
@@ -356,35 +318,19 @@ GLvoid drawBox(GLuint VAO, Shader modelShader) {
 
 	// draw wall
 	glm::mat4 wallModel;
-	wallModel = MyUtil::translate(floorModel, glm::vec3(-15, 15, 0));
+	wallModel = MyUtil::translate(floorModel, glm::vec3(-width, width, 0));
 	wallModel = glm::rotate(wallModel, -glm::pi<GLfloat>() / 2.0f, glm::vec3(0, 0, 1));
 	modelShader.setMat4("model", wallModel);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-	wallModel = MyUtil::translate(floorModel, glm::vec3(15, 15, 0));
+	wallModel = MyUtil::translate(floorModel, glm::vec3(width, width, 0));
 	wallModel = glm::rotate(wallModel, glm::pi<GLfloat>() / 2.0f, glm::vec3(0, 0, 1));
 	modelShader.setMat4("model", wallModel);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-	wallModel = MyUtil::translate(floorModel, glm::vec3(0, 15, -15));
+	wallModel = MyUtil::translate(floorModel, glm::vec3(0, width, -width));
 	wallModel = glm::rotate(wallModel, glm::pi<GLfloat>() / 2.0f, glm::vec3(1, 0, 0));
 	modelShader.setMat4("model", wallModel);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
-GLvoid resolveCollision(Sphere& a, Sphere& b, glm::vec3 normal)
-{
-	// v1' = v1 + j * normal / mass1
-	// v2' = v2 - j * normal / mass2
-	// where:
-	//		- (1 + restitution) * dot((v1 - v2), n)
-	// j = ------------------------------------------
-	//		 dot(n, n) * ((1 / mass1) + (1/ mass2))
-	GLfloat eps = glm::min(a.restitution, b.restitution);
-	glm::vec3 relativeVelocity = a.linearVelocity - b.linearVelocity;
-	GLfloat j = - (1 + eps) * glm::dot(relativeVelocity, normal);
-	j /= (1.0f / a.mass) + (1.0f / b.mass);
-	a.linearVelocity += j * normal / a.mass;
-	b.linearVelocity -= j * normal / b.mass;
-	
-}

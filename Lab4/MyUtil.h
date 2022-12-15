@@ -1,3 +1,4 @@
+#pragma once
 #include <glad/glad.h>
 #include <gl/GL.h>
 
@@ -8,6 +9,15 @@
 
 class MyUtil {
 public:
+
+	static GLfloat distance(const glm::vec3& p1, const glm::vec3& p2) {
+		return
+			glm::sqrt(
+				glm::pow((p1.x - p2.x), 2) +
+				glm::pow((p1.y - p2.y), 2) +
+				glm::pow((p1.z - p2.z), 2));
+	}
+
 	static glm::mat4 translate(const glm::mat4& m, const glm::vec3& v) {
 		glm::mat4 result = m;
 		
@@ -25,7 +35,9 @@ public:
 	}
 
 	static glm::mat4 rotate(const glm::mat4& m, const glm::vec3& v) {
-
+		glm::quat q = euler2quat(v);
+		glm::mat4 R = quat2mat4(q);
+		return m * R;
 	}
 
 	static GLfloat catmullRom(GLfloat p0, GLfloat p1, GLfloat p2, GLfloat p3, GLfloat t, GLboolean tan = false) {
@@ -136,6 +148,17 @@ public:
 		glm::vec2 P(p0, p1);
 		GLfloat result = glm::dot(T * M, P);
 		return result;
+	}
+
+	static glm::quat findRotation(const glm::vec3& v1, const glm::vec3& v2) {
+		glm::quat q;
+		glm::vec3 a = glm::cross(v1, v2);
+		q.x = a.x;
+		q.y = a.y;
+		q.z = a.z;
+		q.w = glm::sqrt(glm::dot(v1, v1) * glm::dot(v2, v2)) + glm::dot(v1, v2);
+		q = glm::normalize(q);
+		return q;
 	}
 
 };
