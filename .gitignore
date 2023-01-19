@@ -362,4 +362,5 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-!models/*.obj
+!Lab[1-5]/models/*
+!Lab[1-5]/packages/glad/**
