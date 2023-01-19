@@ -23,7 +23,7 @@ RigidBody::RigidBody(
 
 void RigidBody::update(GLfloat dt)
 {
-	linearVelocity += force * dt;
+	linearVelocity += force/mass * dt;
 	position += linearVelocity * dt;
 	rotation += rotationVelocity * dt;
 	force = glm::vec3(0, -9.8, 0) * mass;
